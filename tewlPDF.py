@@ -6,7 +6,12 @@
 # a simple PDF manipulator with PyQt5 GUI
 '''
 
+# TODO: add slicing
+
+##############################################################################################################################
+
 # Import all the required stuff
+# Keeping it tidy, it gets up bloated anyway
 from PyQt5.QtWidgets import (
     QPushButton,
     QHBoxLayout,
@@ -22,9 +27,23 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QFileDialog
 )
-from PyQt5 import QtGui, QtCore
+
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtCore import Qt
 from pathlib import Path
-import sys, os, pikepdf, time
+from pikepdf import PasswordError, Pdf
+import sys, os, time, resource_rc
+
+# Required for auto-py-to-exe to work properly
+def resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
@@ -33,17 +52,18 @@ APP_AUTHOR = 'tewlwolow'
 STRING_WELCOME = 'Drop it here'
 STRING_WELCOME_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
 FONT_MAIN = ['Campora', 43]
-FONT_LIST = ['Linux Biolinum G', 12, QtGui.QFont.Bold]
+FONT_LIST = ['Linux Biolinum G', 12, QFont.Bold]
 
 # Define stylesheets
+# Using paths from resource_rc cuz, again, auto-py-to-exe
 stylesheet = """
     mainWindow {
-        background-image: url("twine.png"); 
+        background-image: url(:/twine.png); 
     }
 """
-stylesheetMain = 'background-image: url("bush.png"); border: 2px solid black; color: rgb(0, 0, 0)'
-stylesheetList = 'background-image: url("bushList.png"); border: 2px solid black; color: rgb(0, 0, 0)'
-stylesheetHighlight = 'background-image: url("bush.png"); border: 2px solid black; color: rgba(0, 0, 139, 130)' 
+stylesheetMain = 'background-image: url(:/bush.png); border: 2px solid black; color: rgb(0, 0, 0)'
+stylesheetList = 'background-image: url(:/bushList.png); border: 2px solid black; color: rgb(0, 0, 0)'
+stylesheetHighlight = 'background-image: url(:/bush.png); border: 2px solid black; color: rgba(0, 0, 139, 130)' 
 
 # Define window structure
 class dragDropWindow(QWidget):
@@ -57,9 +77,9 @@ class dragDropWindow(QWidget):
         self.setLayout(self.layout)
         self.text = QLabel(STRING_WELCOME)
         self.layout.addWidget(self.text)
-        self.text.setAlignment(QtCore.Qt.AlignCenter)        
+        self.text.setAlignment(Qt.AlignCenter)        
         self.text.setStyleSheet(stylesheetMain) 
-        self.text.setFont(QtGui.QFont(*FONT_MAIN))        
+        self.text.setFont(QFont(*FONT_MAIN))        
         self.show()
 
         # Catch the second screen and initialise it
@@ -71,7 +91,7 @@ class dragDropWindow(QWidget):
         self.PDFWindow.listWidget = QListWidget(self.PDFWindow)
         self.PDFWindow.listWidget.setDragDropMode(QAbstractItemView.InternalMove)
         self.PDFWindow.listWidget.setDragEnabled(True)
-        self.PDFWindow.listWidget.setFont(QtGui.QFont(*FONT_LIST)) 
+        self.PDFWindow.listWidget.setFont(QFont(*FONT_LIST)) 
         self.PDFWindow.listWidget.setStyleSheet(stylesheetList)
 
         # Set the layout and hide for now
@@ -100,7 +120,7 @@ class dragDropWindow(QWidget):
 
         # Create list objects for each valid file
         for f in self.files:
-            i = QListWidgetItem((QtGui.QIcon('logo.png')), f, self.PDFWindow.listWidget)
+            i = QListWidgetItem((QIcon(resource_path('logo.png'))), f, self.PDFWindow.listWidget)
 
         if len(self.files):
             # Advance if provided with valid files
@@ -135,7 +155,7 @@ class dragDropWindow(QWidget):
                 self.text.setText('It\'s done!')
                 self.text.setStyleSheet(stylesheetMain) 
                 self.backButton = QPushButton('Again')
-                self.backButton.setFont(QtGui.QFont(*FONT_LIST))   
+                self.backButton.setFont(QFont(*FONT_LIST))   
                 self.backButton.clicked.connect(reRun)
                 self.layout.addWidget(self.backButton)
 
@@ -165,22 +185,22 @@ class dragDropWindow(QWidget):
                     return
                 clearData()
 
-                pdf = pikepdf.Pdf.new()
+                pdf = Pdf.new()
                 for f in self.files:
                     # Fairly cumbersome loop for handling errors due to encrypted files
                     while True:
                         try:
-                            src = pikepdf.Pdf.open(f)
+                            src = Pdf.open(f)
                             break
-                        except pikepdf.PasswordError:
+                        except PasswordError:
                             fileName = Path(f)
                             text, ok = QInputDialog.getText(self.PDFWindow, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
                             if ok and text:
                                 self.PDFpassword = str(text)
                                 try:
-                                    src = pikepdf.Pdf.open(f, password=self.PDFpassword)
+                                    src = Pdf.open(f, password=self.PDFpassword)
                                     break
-                                except pikepdf.PasswordError:
+                                except PasswordError:
                                     continue
                             else:
                                 goBack()
@@ -209,23 +229,23 @@ class dragDropWindow(QWidget):
                 for f in self.files:
                     while True:
                         try:
-                            src = pikepdf.Pdf.open(f)
+                            src = Pdf.open(f)
                             break
-                        except pikepdf.PasswordError:
+                        except PasswordError:
                             fileName = Path(f)
                             text, ok = QInputDialog.getText(self.PDFWindow, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
                             if ok and text:
                                 self.PDFpassword = str(text)
                                 try:
-                                    src = pikepdf.Pdf.open(f, password=self.PDFpassword)
+                                    src = Pdf.open(f, password=self.PDFpassword)
                                     break
-                                except pikepdf.PasswordError:
+                                except PasswordError:
                                     continue
                             else:
                                 goBack()
                                 return
                     for page in src.pages:
-                        dst = pikepdf.Pdf.new()
+                        dst = Pdf.new()
                         dst.pages.append(page)
                         path = str(folderDialog + '/' + f'{n:02d}.pdf')
                         n += 1
@@ -258,22 +278,22 @@ class dragDropWindow(QWidget):
 
                     while True:
                         try:
-                            src = pikepdf.Pdf.open(f)
+                            src = Pdf.open(f)
                             break
-                        except pikepdf.PasswordError:
+                        except PasswordError:
                             text, ok = QInputDialog.getText(self.PDFWindow, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
                             if ok and text:
                                 self.PDFpassword = str(text)
                                 try:
-                                    src = pikepdf.Pdf.open(f, password=self.PDFpassword)
+                                    src = Pdf.open(f, password=self.PDFpassword)
                                     break
-                                except pikepdf.PasswordError:
+                                except PasswordError:
                                     continue
                             else:
                                 goBack()
                                 return
                     
-                    dst = pikepdf.Pdf.new()
+                    dst = Pdf.new()
                     dst.pages.extend(src.pages)
                     dst.pages.reverse()
                     dst.save(path)
@@ -293,23 +313,23 @@ class dragDropWindow(QWidget):
                         fileName = Path(f)
                         while True:
                             try:
-                                src = pikepdf.Pdf.open(f)
+                                src = Pdf.open(f)
                                 break
-                            except pikepdf.PasswordError:
+                            except PasswordError:
                                 text, ok = QInputDialog.getText(self.PDFWindow, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
                                 if ok and text:
                                     self.PDFpassword = str(text)
                                     try:
-                                        src = pikepdf.Pdf.open(f, password=self.PDFpassword)
+                                        src = Pdf.open(f, password=self.PDFpassword)
                                         break
-                                    except pikepdf.PasswordError:
+                                    except PasswordError:
                                         continue
                                 else:
                                     goBack()
                                     return
 
                         path = str(folderDialog + '/' + f'{fileName.stem}_reversed.pdf')
-                        dst = pikepdf.Pdf.new()
+                        dst = Pdf.new()
                         dst.pages.extend(src.pages)
                         dst.pages.reverse()
                         dst.save(path)
@@ -328,38 +348,38 @@ class dragDropWindow(QWidget):
             # Add buttons based on file context
             if len(self.files) == 1:
                 self.PDFWindow.optionsWidget.splitButton = QPushButton('Split PDF')
-                self.PDFWindow.optionsWidget.splitButton.setFont(QtGui.QFont(*FONT_LIST))
+                self.PDFWindow.optionsWidget.splitButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.splitButton.clicked.connect(splitPDF)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.splitButton)
 
                 self.PDFWindow.optionsWidget.reverseButton = QPushButton('Reverse PDF')
-                self.PDFWindow.optionsWidget.reverseButton.setFont(QtGui.QFont(*FONT_LIST))
+                self.PDFWindow.optionsWidget.reverseButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.reverseButton.clicked.connect(reversePDF)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.reverseButton)
 
                 self.PDFWindow.optionsWidget.backButton = QPushButton('Back')
-                self.PDFWindow.optionsWidget.backButton.setFont(QtGui.QFont(*FONT_LIST))   
+                self.PDFWindow.optionsWidget.backButton.setFont(QFont(*FONT_LIST))   
                 self.PDFWindow.optionsWidget.backButton.clicked.connect(goBack)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.backButton)
             
             else:
                 self.PDFWindow.optionsWidget.mergeButton = QPushButton('Merge PDFs')
-                self.PDFWindow.optionsWidget.mergeButton.setFont(QtGui.QFont(*FONT_LIST))
+                self.PDFWindow.optionsWidget.mergeButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.mergeButton.clicked.connect(mergePDF)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.mergeButton)
 
                 self.PDFWindow.optionsWidget.splitButton = QPushButton('Split PDFs')
-                self.PDFWindow.optionsWidget.splitButton.setFont(QtGui.QFont(*FONT_LIST))
+                self.PDFWindow.optionsWidget.splitButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.splitButton.clicked.connect(splitPDF)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.splitButton)
 
                 self.PDFWindow.optionsWidget.reverseButton = QPushButton('Reverse PDFs')
-                self.PDFWindow.optionsWidget.reverseButton.setFont(QtGui.QFont(*FONT_LIST))
+                self.PDFWindow.optionsWidget.reverseButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.reverseButton.clicked.connect(reversePDF)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.reverseButton)
 
                 self.PDFWindow.optionsWidget.backButton = QPushButton('Back')
-                self.PDFWindow.optionsWidget.backButton.setFont(QtGui.QFont(*FONT_LIST))   
+                self.PDFWindow.optionsWidget.backButton.setFont(QFont(*FONT_LIST))   
                 self.PDFWindow.optionsWidget.backButton.clicked.connect(goBack)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.backButton)
 
@@ -377,7 +397,7 @@ class mainWindow(QMainWindow):
     def init_gui(self):
         self.setWindowTitle(APP_NAME + ' v.' + APP_VERSION + ' by ' + APP_AUTHOR)
         self.resize(720, 480)
-        self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.setWindowIcon(QIcon(resource_path('logo.png')))
         self.window = QWidget()
         self.layout = QGridLayout()
         self.setCentralWidget(self.window)
@@ -393,7 +413,7 @@ class mainWindow(QMainWindow):
 # Initialise the programme
 if __name__ == '__main__':
     app = QApplication([])
-    app.setAttribute(QtCore.Qt.AA_DisableWindowContextHelpButton)
+    app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     app.setStyleSheet(stylesheet)       
     mainWindow = mainWindow()
     mainWindow.show()
