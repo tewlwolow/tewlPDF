@@ -28,7 +28,7 @@ import sys, os, pikepdf, time
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
-APP_VERSION = '0.2 beta'
+APP_VERSION = '0.3 beta'
 APP_AUTHOR = 'tewlwolow'
 STRING_WELCOME = 'Drop it here'
 STRING_WELCOME_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
@@ -107,20 +107,21 @@ class dragDropWindow(QWidget):
             self.hide()
             self.PDFWindow.show()
 
+            # Purge data between window switches
             def clearData():
                 self.PDFWindow.listWidget.clear()
                 self.PDFWindowLayout.removeWidget(self.PDFWindow.optionsWidget)
                 self.PDFWindow.optionsWidget.deleteLater()
 
+            # Bounce back to welcome screen
             def goBack():
                 self.PDFWindow.hide()
-
                 clearData()
-
                 self.text.setText(STRING_WELCOME)
                 self.text.setStyleSheet(stylesheetMain) 
                 self.show()
-
+            
+            # Bounce back to welcome screen without clearing data after finished operation
             def reRun():
                 self.backButton.deleteLater()
                 self.PDFWindow.hide()
@@ -128,26 +129,26 @@ class dragDropWindow(QWidget):
                 self.text.setStyleSheet(stylesheetMain) 
                 self.show()
 
-            # Show the finished window
+            # Show the finished operation window
             def finishedWindow():
                 time.sleep(1)
                 self.text.setText('It\'s done!')
                 self.text.setStyleSheet(stylesheetMain) 
-
                 self.backButton = QPushButton('Again')
                 self.backButton.setFont(QtGui.QFont(*FONT_LIST))   
                 self.backButton.clicked.connect(reRun)
                 self.layout.addWidget(self.backButton)
 
+            # Show window while operation is taking place
             def loaderWindow():
                 self.PDFWindow.hide()
-    
                 self.text.setText('Working...')
                 self.text.setStyleSheet(stylesheetMain)
-                
                 self.show()
 
+            # Define merging operation
             def mergePDF():
+                # Get files once again; user might have reordered those
                 self.files = [str(self.PDFWindow.listWidget.item(i).text()) for i in range(self.PDFWindow.listWidget.count())]
                 loaderWindow()
                 saveDialog = QFileDialog.getSaveFileName(
@@ -157,7 +158,7 @@ class dragDropWindow(QWidget):
                 'Portable Document Files (*.pdf)')
 
                 path = str(saveDialog[0])
-
+                # If user chooses 'Cancel' on file dialog, bounce back to options window
                 if not path:
                     self.hide()
                     self.PDFWindow.show()
@@ -166,6 +167,7 @@ class dragDropWindow(QWidget):
 
                 pdf = pikepdf.Pdf.new()
                 for f in self.files:
+                    # Fairly cumbersome loop for handling errors due to encrypted files
                     while True:
                         try:
                             src = pikepdf.Pdf.open(f)
@@ -190,6 +192,7 @@ class dragDropWindow(QWidget):
                 pdf.close()
                 finishedWindow()
             
+            # Define splitting operation
             def splitPDF():
                 self.files = [str(self.PDFWindow.listWidget.item(i).text()) for i in range(self.PDFWindow.listWidget.count())]
                 loaderWindow()
@@ -201,6 +204,7 @@ class dragDropWindow(QWidget):
                     return
                 clearData()
 
+                # Need a custom counter here in order not to end up overwriting the files
                 n = 0
                 for f in self.files:
                     while True:
@@ -220,7 +224,7 @@ class dragDropWindow(QWidget):
                             else:
                                 goBack()
                                 return
-                    for _, page in enumerate(src.pages):
+                    for page in src.pages:
                         dst = pikepdf.Pdf.new()
                         dst.pages.append(page)
                         path = str(folderDialog + '/' + f'{n:02d}.pdf')
@@ -272,9 +276,7 @@ class dragDropWindow(QWidget):
                     dst = pikepdf.Pdf.new()
                     dst.pages.extend(src.pages)
                     dst.pages.reverse()
-
                     dst.save(path)
-
                     dst.close()
                     src.close()
 
@@ -310,20 +312,20 @@ class dragDropWindow(QWidget):
                         dst = pikepdf.Pdf.new()
                         dst.pages.extend(src.pages)
                         dst.pages.reverse()
-
                         dst.save(path)
-
                         dst.close()
                         src.close()
 
                 finishedWindow()
             
+            # Construct window content
             self.PDFWindow.optionsWidget = QWidget(self.PDFWindow)
             self.PDFWindow.optionsWidget.layout = QVBoxLayout(self.PDFWindow.optionsWidget)
             self.PDFWindow.optionsWidget.setLayout(self.PDFWindow.optionsWidget.layout)
             self.PDFWindowLayout.addWidget(self.PDFWindow.listWidget)      
             self.PDFWindowLayout.addWidget(self.PDFWindow.optionsWidget)
 
+            # Add buttons based on file context
             if len(self.files) == 1:
                 self.PDFWindow.optionsWidget.splitButton = QPushButton('Split PDF')
                 self.PDFWindow.optionsWidget.splitButton.setFont(QtGui.QFont(*FONT_LIST))
@@ -361,12 +363,10 @@ class dragDropWindow(QWidget):
                 self.PDFWindow.optionsWidget.backButton.clicked.connect(goBack)
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.backButton)
 
-
         # Bounce back to welcome screen with fail message if no valid file dropped    
         else:
             self.text.setText(STRING_WELCOME_FAIL)
             self.text.setStyleSheet(stylesheetMain) 
-
 
 # Define main window
 class mainWindow(QMainWindow):
@@ -375,7 +375,6 @@ class mainWindow(QMainWindow):
         self.init_gui()
 
     def init_gui(self):
-
         self.setWindowTitle(APP_NAME + ' v.' + APP_VERSION + ' by ' + APP_AUTHOR)
         self.resize(720, 480)
         self.setWindowIcon(QtGui.QIcon('logo.png'))
