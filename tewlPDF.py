@@ -6,7 +6,9 @@
 # a simple PDF manipulator with PyQt5 GUI
 '''
 
+# TODO: add tooltips
 # TODO: add slicing
+# TODO: add cutting
 
 ##############################################################################################################################
 
@@ -350,37 +352,44 @@ class dragDropWindow(QWidget):
                 self.PDFWindow.optionsWidget.splitButton = QPushButton('Split PDF')
                 self.PDFWindow.optionsWidget.splitButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.splitButton.clicked.connect(splitPDF)
+                self.PDFWindow.optionsWidget.splitButton.setToolTip('Split file into single-page PDFs')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.splitButton)
 
                 self.PDFWindow.optionsWidget.reverseButton = QPushButton('Reverse PDF')
                 self.PDFWindow.optionsWidget.reverseButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.reverseButton.clicked.connect(reversePDF)
+                self.PDFWindow.optionsWidget.reverseButton.setToolTip('Reverse page order')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.reverseButton)
 
                 self.PDFWindow.optionsWidget.backButton = QPushButton('Back')
                 self.PDFWindow.optionsWidget.backButton.setFont(QFont(*FONT_LIST))   
                 self.PDFWindow.optionsWidget.backButton.clicked.connect(goBack)
+                self.PDFWindow.optionsWidget.backButton.setToolTip('Go back to welcome screen')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.backButton)
             
             else:
                 self.PDFWindow.optionsWidget.mergeButton = QPushButton('Merge PDFs')
                 self.PDFWindow.optionsWidget.mergeButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.mergeButton.clicked.connect(mergePDF)
+                self.PDFWindow.optionsWidget.mergeButton.setToolTip('Merge files into one PDF')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.mergeButton)
 
                 self.PDFWindow.optionsWidget.splitButton = QPushButton('Split PDFs')
                 self.PDFWindow.optionsWidget.splitButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.splitButton.clicked.connect(splitPDF)
+                self.PDFWindow.optionsWidget.splitButton.setToolTip('Split files into single-page PDFs')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.splitButton)
 
                 self.PDFWindow.optionsWidget.reverseButton = QPushButton('Reverse PDFs')
                 self.PDFWindow.optionsWidget.reverseButton.setFont(QFont(*FONT_LIST))
                 self.PDFWindow.optionsWidget.reverseButton.clicked.connect(reversePDF)
+                self.PDFWindow.optionsWidget.reverseButton.setToolTip('Reverse page order')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.reverseButton)
 
                 self.PDFWindow.optionsWidget.backButton = QPushButton('Back')
                 self.PDFWindow.optionsWidget.backButton.setFont(QFont(*FONT_LIST))   
                 self.PDFWindow.optionsWidget.backButton.clicked.connect(goBack)
+                self.PDFWindow.optionsWidget.backButton.setToolTip('Go back to welcome screen')
                 self.PDFWindow.optionsWidget.layout.addWidget(self.PDFWindow.optionsWidget.backButton)
 
         # Bounce back to welcome screen with fail message if no valid file dropped    
