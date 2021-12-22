@@ -10,6 +10,10 @@
 # TODO: add slicing
 # TODO: add cutting
 
+# TODO: actual, proper, clean OOP - Command DD?
+
+# Classes=windows: welcome, list, working, it's done
+
 ##############################################################################################################################
 
 # Import all the required stuff
@@ -49,10 +53,14 @@ def resource_path(relative_path):
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
-APP_VERSION = '0.3 beta'
+APP_VERSION = '0.3 beta' # TODO: 1.0 when done!
 APP_AUTHOR = 'tewlwolow'
+
+# Messages
 STRING_WELCOME = 'Drop it here'
 STRING_WELCOME_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
+
+# Stylesheet finals
 FONT_MAIN = ['Campora', 43]
 FONT_LIST = ['Linux Biolinum G', 12, QFont.Bold]
 
