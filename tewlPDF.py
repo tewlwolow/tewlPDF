@@ -12,7 +12,7 @@
 
 # TODO: actual, proper, clean OOP - Command DD?
 
-# Classes=windows: welcome, list, working, it's done
+# Classes=windows: dragdrop, list, working, it's done
 
 ##############################################################################################################################
 
