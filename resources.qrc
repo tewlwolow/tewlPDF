@@ -2,7 +2,8 @@
   <qresource>
     <file alias="tewl_container">assets/background_container.png</file>
     <file alias="tewl_bg_main">assets/background_main.png</file>
-    <file alias="tewl_bg_list">assets/background_list.png</file>
     <file alias="tewl_logo">assets/logo.png</file>
+    <file alias="tewl_h_font">assets/DarkerGrotesque-Regular.ttf</file>
+    <file alias="tewl_p_font">assets/ZenMaruGothic-Regular.ttf</file>
   </qresource>
 </RCC>

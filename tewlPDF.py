@@ -15,7 +15,7 @@
 
 # TODO: actual, proper, clean OOP - Command DD?
 
-# Classes=windows: dragdrop, list, working, it's done
+# Classes=windows: dragdrop, list, it's done
 
 ##############################################################################################################################
 
@@ -37,7 +37,7 @@ from PyQt5.QtWidgets import (
     QFileDialog
 )
 
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt
 from pathlib import Path
 from pikepdf import PasswordError, Pdf
@@ -47,6 +47,8 @@ import time
 import resources
 
 # Required for auto-py-to-exe to work properly
+
+
 def resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
     try:
@@ -64,28 +66,397 @@ APP_VERSION = '0.3.1 dev WIP'  # TODO: 1.0 when done!
 APP_AUTHOR = 'tewlwolow'
 
 # Messages
-STRING_WELCOME = 'Drop it here'
-STRING_WELCOME_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
+STRING_DROP = 'DROP IT HERE'
+STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
+STRING_FINISHED = 'It\'s done!'
 
 # STYLESHEET_CONTAINER finals
-FONT_MAIN = ['Campora', 43]
-FONT_LIST = ['Linux Biolinum G', 12, QFont.Bold]
+FONT_MAIN = ['Darker Grotesque', 55]
+FONT_LIST = ['Zen Maru Gothic', 14]
 
 # Define stylesheets
 # Using paths from resource_rc cuz, again, auto-py-to-exe
 STYLESHEET_CONTAINER = """
-    MAIN_WINDOW {
-        background-image: url(:tewl_container); 
-    }
+	MAIN_WINDOW {
+		background-image: url(:tewl_container);
+	}
 """
-STYLESHEET_MAIN = 'background-image: url(:/tewl_bg_main); border: 2px solid black; color: rgb(0, 0, 0)'
-STYLESHEET_LIST = 'background-image: url(:/tewl_bg_list); border: 2px solid black; color: rgb(0, 0, 0)'
-STYLESHEET_HIGHLIGHT = 'background-image: url(:/tewl_bg_main); border: 2px solid black; color: rgba(0, 0, 139, 130)'
+STYLESHEET_MAIN = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgb(0, 0, 0)'
+STYLESHEET_LIST = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgb(0, 0, 0)'
+STYLESHEET_HIGHLIGHT = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgba(0, 0, 139, 130)'
 
 # Define window structure
 
+
+class FINISHED_SCREEN(QWidget):
+    def __init__(self, main):
+        super().__init__()
+
+        def restart():
+            main.finishedScreen.hide()
+            main.welcomeScreen.show()
+
+        self.layout = QGridLayout()
+        self.text = QLabel(STRING_FINISHED)
+        self.layout.addWidget(self.text)
+        self.text.setAlignment(Qt.AlignCenter)
+        self.text.setFont(QFont(*FONT_MAIN))
+        self.text.setStyleSheet(STYLESHEET_MAIN)
+        self.backButton = QPushButton('Again')
+        self.backButton.setFont(QFont(*FONT_LIST))
+        self.backButton.clicked.connect(restart)
+        self.layout.addWidget(self.backButton)
+        self.setLayout(self.layout)
+
+
+class FILELIST_SCREEN(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setAcceptDrops(True)
+        self.layout = QHBoxLayout(self)
+
+        self.listWidget = QListWidget(self)
+        self.listWidget.setDragDropMode(
+            QAbstractItemView.InternalMove)
+        self.listWidget.setDragEnabled(True)
+        self.listWidget.setFont(QFont(*FONT_LIST))
+        self.listWidget.setStyleSheet(STYLESHEET_LIST)
+
+        self.setLayout(self.layout)
+
+    def setFiles(self, files):
+        self.__files = files
+
+    def getFiles(self):
+        return self.__files
+
+    def purgeFiles(self):
+        self.__files = []
+
+    def dragEnterEvent(self, event):
+        # Bounce off mouse clicks
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        addedFiles = [u.toLocalFile() for u in event.mimeData().urls()
+                      if u.toLocalFile().endswith('.pdf')]
+
+        if len(addedFiles):
+            newFiles = self.__files + addedFiles
+            self.clearData()
+            self.setFiles(newFiles)
+            self.parseFiles()
+
+    # Purge data between window switches
+    def clearData(self):
+        self.purgeFiles()
+        self.listWidget.clear()
+        self.layout.removeWidget(
+            self.optionsWidget)
+        self.optionsWidget.deleteLater()
+
+    # Bounce back to welcome screen
+    def goBack(self):
+        self.hide()
+        self.clearData()
+        mainWindow.welcomeScreen.text.setText(STRING_DROP)
+        mainWindow.welcomeScreen.show()
+
+    # Define merging operation
+    def mergePDF(self):
+        # Get files once again; user might have reordered those
+        self.__files = [str(self.listWidget.item(i).text())
+                        for i in range(self.listWidget.count())]
+        self.hide()
+        saveDialog = QFileDialog.getSaveFileName(
+            self,
+            'Save merged PDF',
+            'Merged Document.pdf',
+            'Portable Document Files (*.pdf)')
+
+        path = str(saveDialog[0])
+        # If user chooses 'Cancel' on file dialog, bounce back to options window
+        if not path:
+            self.hide()
+            self.show()
+            return
+
+        pdf = Pdf.new()
+        for f in self.__files:
+            # Fairly cumbersome loop for handling errors due to encrypted files
+            while True:
+                try:
+                    src = Pdf.open(f)
+                    break
+                except PasswordError:
+                    fileName = Path(f)
+                    text, ok = QInputDialog.getText(
+                        self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+                    if ok and text:
+                        self.PDFpassword = str(text)
+                        try:
+                            src = Pdf.open(
+                                f, password=self.PDFpassword)
+                            break
+                        except PasswordError:
+                            continue
+                    else:
+                        self.goBack()
+                        return
+
+            pdf.pages.extend(src.pages)
+
+        pdf.save(path)
+        pdf.close()
+
+        self.clearData()
+        mainWindow.finishedScreen.show()
+
+    # Define splitting operation
+    def splitPDF(self):
+        self.__files = [str(self.listWidget.item(i).text())
+                        for i in range(self.listWidget.count())]
+        self.hide()
+        folderDialog = QFileDialog.getExistingDirectory(
+            self, 'Select Folder')
+
+        if not folderDialog:
+            self.hide()
+            self.show()
+            return
+
+        # Need a custom counter here in order not to end up overwriting the files
+        n = 0
+        for f in self.__files:
+            while True:
+                try:
+                    src = Pdf.open(f)
+                    break
+                except PasswordError:
+                    fileName = Path(f)
+                    text, ok = QInputDialog.getText(
+                        self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+                    if ok and text:
+                        self.PDFpassword = str(text)
+                        try:
+                            src = Pdf.open(
+                                f, password=self.PDFpassword)
+                            break
+                        except PasswordError:
+                            continue
+                    else:
+                        self.goBack()
+                        return
+            for page in src.pages:
+                dst = Pdf.new()
+                dst.pages.append(page)
+                path = str(folderDialog + '/' + f'{n:02d}.pdf')
+                n += 1
+                dst.save(path)
+                dst.close()
+            src.close()
+
+        self.clearData()
+        mainWindow.finishedScreen.show()
+
+    def reversePDF(self):
+        self.__files = [str(self.listWidget.item(i).text())
+                        for i in range(self.listWidget.count())]
+        self.hide()
+
+        if len(self.__files) == 1:
+            f = self.__files[0]
+            fileName = Path(f)
+
+            saveDialog = QFileDialog.getSaveFileName(
+                self,
+                'Save reversed PDF',
+                fileName.stem + '_reversed',
+                'Portable Document Files (*.pdf)')
+            path = str(saveDialog[0])
+
+            if not path:
+                self.hide()
+                self.show()
+                return
+
+            while True:
+                try:
+                    src = Pdf.open(f)
+                    break
+                except PasswordError:
+                    text, ok = QInputDialog.getText(
+                        self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+                    if ok and text:
+                        self.PDFpassword = str(text)
+                        try:
+                            src = Pdf.open(
+                                f, password=self.PDFpassword)
+                            break
+                        except PasswordError:
+                            continue
+                    else:
+                        self.goBack()
+                        return
+
+            dst = Pdf.new()
+            dst.pages.extend(src.pages)
+            dst.pages.reverse()
+            dst.save(path)
+            dst.close()
+            src.close()
+
+        else:
+            folderDialog = QFileDialog.getExistingDirectory(
+                self, 'Select Folder')
+
+            if not folderDialog:
+                self.hide()
+                self.show()
+                return
+
+            for f in self.__files:
+                fileName = Path(f)
+                while True:
+                    try:
+                        src = Pdf.open(f)
+                        break
+                    except PasswordError:
+                        text, ok = QInputDialog.getText(
+                            self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+                        if ok and text:
+                            self.PDFpassword = str(text)
+                            try:
+                                src = Pdf.open(
+                                    f, password=self.PDFpassword)
+                                break
+                            except PasswordError:
+                                continue
+                        else:
+                            self.goBack()
+                            return
+
+                path = str(folderDialog + '/' +
+                           f'{fileName.stem}_reversed.pdf')
+                dst = Pdf.new()
+                dst.pages.extend(src.pages)
+                dst.pages.reverse()
+                dst.save(path)
+                dst.close()
+                src.close()
+
+        self.clearData()
+        mainWindow.finishedScreen.show()
+
+    # Create list objects for each valid file
+
+    def parseFiles(self):
+        for f in self.__files:
+            i = QListWidgetItem(
+                (QIcon(':/tewl_logo')), f, self.listWidget)
+
+        if len(self.__files):
+            # Advance if provided with valid files
+			# Update doesn't work. Bummer
+            self.hide()
+            self.show()
+
+            # Construct window content
+            self.optionsWidget = QWidget(self)
+            self.optionsWidget.layout = QVBoxLayout(
+                self.optionsWidget)
+            self.optionsWidget.setLayout(
+                self.optionsWidget.layout)
+            self.layout.addWidget(self.listWidget)
+            self.layout.addWidget(
+                self.optionsWidget)
+
+            # Add buttons based on file context
+            if len(self.__files) == 1:
+                self.optionsWidget.splitButton = QPushButton(
+                    'Split PDF')
+                self.optionsWidget.splitButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.splitButton.clicked.connect(
+                    self.splitPDF)
+                self.optionsWidget.splitButton.setToolTip(
+                    'Split file into single-page PDFs')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.splitButton)
+
+                self.optionsWidget.reverseButton = QPushButton(
+                    'Reverse PDF')
+                self.optionsWidget.reverseButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.reverseButton.clicked.connect(
+                    self.reversePDF)
+                self.optionsWidget.reverseButton.setToolTip(
+                    'Reverse page order')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.reverseButton)
+
+                self.optionsWidget.backButton = QPushButton(
+                    'Back')
+                self.optionsWidget.backButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.backButton.clicked.connect(
+                    self.goBack)
+                self.optionsWidget.backButton.setToolTip(
+                    'Go back to welcome screen')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.backButton)
+
+            else:
+                self.optionsWidget.mergeButton = QPushButton(
+                    'Merge PDFs')
+                self.optionsWidget.mergeButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.mergeButton.clicked.connect(
+                    self.mergePDF)
+                self.optionsWidget.mergeButton.setToolTip(
+                    'Merge files into one PDF')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.mergeButton)
+
+                self.optionsWidget.splitButton = QPushButton(
+                    'Split PDFs')
+                self.optionsWidget.splitButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.splitButton.clicked.connect(
+                    self.splitPDF)
+                self.optionsWidget.splitButton.setToolTip(
+                    'Split files into single-page PDFs')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.splitButton)
+
+                self.optionsWidget.reverseButton = QPushButton(
+                    'Reverse PDFs')
+                self.optionsWidget.reverseButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.reverseButton.clicked.connect(
+                    self.reversePDF)
+                self.optionsWidget.reverseButton.setToolTip(
+                    'Reverse page order')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.reverseButton)
+
+                self.optionsWidget.backButton = QPushButton(
+                    'Back')
+                self.optionsWidget.backButton.setFont(
+                    QFont(*FONT_LIST))
+                self.optionsWidget.backButton.clicked.connect(
+                    self.goBack)
+                self.optionsWidget.backButton.setToolTip(
+                    'Go back to welcome screen')
+                self.optionsWidget.layout.addWidget(
+                    self.optionsWidget.backButton)
+
+
 class WELCOME_SCREEN(QWidget):
-    def __init__(self, filelistScreen):
+    def __init__(self):
         super().__init__()
 
         # Define the contents of the welcome screen
@@ -93,29 +464,11 @@ class WELCOME_SCREEN(QWidget):
         self.setAcceptDrops(True)
         self.layout = QGridLayout()
         self.setLayout(self.layout)
-        self.text = QLabel(STRING_WELCOME)
+        self.text = QLabel(STRING_DROP)
         self.layout.addWidget(self.text)
         self.text.setAlignment(Qt.AlignCenter)
         self.text.setStyleSheet(STYLESHEET_MAIN)
         self.text.setFont(QFont(*FONT_MAIN))
-        self.show()
-
-        # Catch the second screen and initialise it
-        self.filelistScreen = filelistScreen
-        self.filelistScreen.setAcceptDrops(True)
-        self.filelistScreenLayout = QHBoxLayout(self.filelistScreen)
-
-        # Create the list widget to hold filenames inside the second screen
-        self.filelistScreen.listWidget = QListWidget(self.filelistScreen)
-        self.filelistScreen.listWidget.setDragDropMode(
-            QAbstractItemView.InternalMove)
-        self.filelistScreen.listWidget.setDragEnabled(True)
-        self.filelistScreen.listWidget.setFont(QFont(*FONT_LIST))
-        self.filelistScreen.listWidget.setStyleSheet(STYLESHEET_LIST)
-
-        # Set the layout and hide for now
-        self.filelistScreen.setLayout(self.filelistScreenLayout)
-        self.filelistScreen.hide()
 
     def dragEnterEvent(self, event):
         # Define highlight style
@@ -131,341 +484,22 @@ class WELCOME_SCREEN(QWidget):
         # Go back to main style
         self.text.setStyleSheet(STYLESHEET_MAIN)
 
-    # Main step to dynamically create data and define operations
+    # Get dropped files, pass data to filelist class and hide this window
     def dropEvent(self, event):
+        self.text.setStyleSheet(STYLESHEET_MAIN)
+        files = [u.toLocalFile() for u in event.mimeData().urls()
+                 if u.toLocalFile().endswith('.pdf')]
 
-        # Catche dropped files
-        self.files = [u.toLocalFile() for u in event.mimeData().urls()
-                      if u.toLocalFile().endswith('.pdf')]
-
-        # Create list objects for each valid file
-        for f in self.files:
-            i = QListWidgetItem(
-                (QIcon(resource_path(':/tewl_logo'))), f, self.filelistScreen.listWidget)
-
-        if len(self.files):
-            # Advance if provided with valid files
+        if len(files):
+            mainWindow.filelistScreen.setFiles(files)
+            mainWindow.filelistScreen.parseFiles()
             self.hide()
-            self.filelistScreen.show()
-
-            # Purge data between window switches
-            def clearData():
-                self.filelistScreen.listWidget.clear()
-                self.filelistScreenLayout.removeWidget(self.filelistScreen.optionsWidget)
-                self.filelistScreen.optionsWidget.deleteLater()
-
-            # Bounce back to welcome screen
-            def goBack():
-                self.filelistScreen.hide()
-                clearData()
-                self.text.setText(STRING_WELCOME)
-                self.text.setStyleSheet(STYLESHEET_MAIN)
-                self.show()
-
-            # Bounce back to welcome screen without clearing data after finished operation
-            def reRun():
-                self.backButton.deleteLater()
-                self.filelistScreen.hide()
-                self.text.setText(STRING_WELCOME)
-                self.text.setStyleSheet(STYLESHEET_MAIN)
-                self.show()
-
-            # Show the finished operation window
-            def finishedWindow():
-                time.sleep(1)
-                self.text.setText('It\'s done!')
-                self.text.setStyleSheet(STYLESHEET_MAIN)
-                self.backButton = QPushButton('Again')
-                self.backButton.setFont(QFont(*FONT_LIST))
-                self.backButton.clicked.connect(reRun)
-                self.layout.addWidget(self.backButton)
-
-            # Show window while operation is taking place
-            def loaderWindow():
-                self.filelistScreen.hide()
-                self.text.setText('Working...')
-                self.text.setStyleSheet(STYLESHEET_MAIN)
-                self.show()
-
-            # Define merging operation
-            def mergePDF():
-                # Get files once again; user might have reordered those
-                self.files = [str(self.filelistScreen.listWidget.item(i).text())
-                              for i in range(self.filelistScreen.listWidget.count())]
-                loaderWindow()
-                saveDialog = QFileDialog.getSaveFileName(
-                    self,
-                    'Save merged PDF',
-                    'Merged Document.pdf',
-                    'Portable Document Files (*.pdf)')
-
-                path = str(saveDialog[0])
-                # If user chooses 'Cancel' on file dialog, bounce back to options window
-                if not path:
-                    self.hide()
-                    self.filelistScreen.show()
-                    return
-                clearData()
-
-                pdf = Pdf.new()
-                for f in self.files:
-                    # Fairly cumbersome loop for handling errors due to encrypted files
-                    while True:
-                        try:
-                            src = Pdf.open(f)
-                            break
-                        except PasswordError:
-                            fileName = Path(f)
-                            text, ok = QInputDialog.getText(
-                                self.filelistScreen, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
-                            if ok and text:
-                                self.PDFpassword = str(text)
-                                try:
-                                    src = Pdf.open(
-                                        f, password=self.PDFpassword)
-                                    break
-                                except PasswordError:
-                                    continue
-                            else:
-                                goBack()
-                                return
-
-                    pdf.pages.extend(src.pages)
-
-                pdf.save(path)
-                pdf.close()
-                finishedWindow()
-
-            # Define splitting operation
-            def splitPDF():
-                self.files = [str(self.filelistScreen.listWidget.item(i).text())
-                              for i in range(self.filelistScreen.listWidget.count())]
-                loaderWindow()
-                folderDialog = QFileDialog.getExistingDirectory(
-                    self, 'Select Folder')
-
-                if not folderDialog:
-                    self.hide()
-                    self.filelistScreen.show()
-                    return
-                clearData()
-
-                # Need a custom counter here in order not to end up overwriting the files
-                n = 0
-                for f in self.files:
-                    while True:
-                        try:
-                            src = Pdf.open(f)
-                            break
-                        except PasswordError:
-                            fileName = Path(f)
-                            text, ok = QInputDialog.getText(
-                                self.filelistScreen, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
-                            if ok and text:
-                                self.PDFpassword = str(text)
-                                try:
-                                    src = Pdf.open(
-                                        f, password=self.PDFpassword)
-                                    break
-                                except PasswordError:
-                                    continue
-                            else:
-                                goBack()
-                                return
-                    for page in src.pages:
-                        dst = Pdf.new()
-                        dst.pages.append(page)
-                        path = str(folderDialog + '/' + f'{n:02d}.pdf')
-                        n += 1
-                        dst.save(path)
-                        dst.close()
-                    src.close()
-
-                finishedWindow()
-
-            def reversePDF():
-                self.files = [str(self.filelistScreen.listWidget.item(i).text())
-                              for i in range(self.filelistScreen.listWidget.count())]
-                loaderWindow()
-
-                if len(self.files) == 1:
-                    f = self.files[0]
-                    fileName = Path(f)
-
-                    saveDialog = QFileDialog.getSaveFileName(
-                        self,
-                        'Save reversed PDF',
-                        fileName.stem + '_reversed',
-                        'Portable Document Files (*.pdf)')
-                    path = str(saveDialog[0])
-
-                    if not path:
-                        self.hide()
-                        self.filelistScreen.show()
-                        return
-                    clearData()
-
-                    while True:
-                        try:
-                            src = Pdf.open(f)
-                            break
-                        except PasswordError:
-                            text, ok = QInputDialog.getText(
-                                self.filelistScreen, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
-                            if ok and text:
-                                self.PDFpassword = str(text)
-                                try:
-                                    src = Pdf.open(
-                                        f, password=self.PDFpassword)
-                                    break
-                                except PasswordError:
-                                    continue
-                            else:
-                                goBack()
-                                return
-
-                    dst = Pdf.new()
-                    dst.pages.extend(src.pages)
-                    dst.pages.reverse()
-                    dst.save(path)
-                    dst.close()
-                    src.close()
-
-                else:
-                    folderDialog = QFileDialog.getExistingDirectory(
-                        self, 'Select Folder')
-
-                    if not folderDialog:
-                        self.hide()
-                        self.filelistScreen.show()
-                        return
-                    clearData()
-
-                    for f in self.files:
-                        fileName = Path(f)
-                        while True:
-                            try:
-                                src = Pdf.open(f)
-                                break
-                            except PasswordError:
-                                text, ok = QInputDialog.getText(
-                                    self.filelistScreen, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
-                                if ok and text:
-                                    self.PDFpassword = str(text)
-                                    try:
-                                        src = Pdf.open(
-                                            f, password=self.PDFpassword)
-                                        break
-                                    except PasswordError:
-                                        continue
-                                else:
-                                    goBack()
-                                    return
-
-                        path = str(folderDialog + '/' +
-                                   f'{fileName.stem}_reversed.pdf')
-                        dst = Pdf.new()
-                        dst.pages.extend(src.pages)
-                        dst.pages.reverse()
-                        dst.save(path)
-                        dst.close()
-                        src.close()
-
-                finishedWindow()
-
-            # Construct window content
-            self.filelistScreen.optionsWidget = QWidget(self.filelistScreen)
-            self.filelistScreen.optionsWidget.layout = QVBoxLayout(
-                self.filelistScreen.optionsWidget)
-            self.filelistScreen.optionsWidget.setLayout(
-                self.filelistScreen.optionsWidget.layout)
-            self.filelistScreenLayout.addWidget(self.filelistScreen.listWidget)
-            self.filelistScreenLayout.addWidget(self.filelistScreen.optionsWidget)
-
-            # Add buttons based on file context
-            if len(self.files) == 1:
-                self.filelistScreen.optionsWidget.splitButton = QPushButton(
-                    'Split PDF')
-                self.filelistScreen.optionsWidget.splitButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.splitButton.clicked.connect(
-                    splitPDF)
-                self.filelistScreen.optionsWidget.splitButton.setToolTip(
-                    'Split file into single-page PDFs')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.splitButton)
-
-                self.filelistScreen.optionsWidget.reverseButton = QPushButton(
-                    'Reverse PDF')
-                self.filelistScreen.optionsWidget.reverseButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.reverseButton.clicked.connect(
-                    reversePDF)
-                self.filelistScreen.optionsWidget.reverseButton.setToolTip(
-                    'Reverse page order')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.reverseButton)
-
-                self.filelistScreen.optionsWidget.backButton = QPushButton('Back')
-                self.filelistScreen.optionsWidget.backButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.backButton.clicked.connect(goBack)
-                self.filelistScreen.optionsWidget.backButton.setToolTip(
-                    'Go back to welcome screen')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.backButton)
-
-            else:
-                self.filelistScreen.optionsWidget.mergeButton = QPushButton(
-                    'Merge PDFs')
-                self.filelistScreen.optionsWidget.mergeButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.mergeButton.clicked.connect(
-                    mergePDF)
-                self.filelistScreen.optionsWidget.mergeButton.setToolTip(
-                    'Merge files into one PDF')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.mergeButton)
-
-                self.filelistScreen.optionsWidget.splitButton = QPushButton(
-                    'Split PDFs')
-                self.filelistScreen.optionsWidget.splitButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.splitButton.clicked.connect(
-                    splitPDF)
-                self.filelistScreen.optionsWidget.splitButton.setToolTip(
-                    'Split files into single-page PDFs')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.splitButton)
-
-                self.filelistScreen.optionsWidget.reverseButton = QPushButton(
-                    'Reverse PDFs')
-                self.filelistScreen.optionsWidget.reverseButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.reverseButton.clicked.connect(
-                    reversePDF)
-                self.filelistScreen.optionsWidget.reverseButton.setToolTip(
-                    'Reverse page order')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.reverseButton)
-
-                self.filelistScreen.optionsWidget.backButton = QPushButton('Back')
-                self.filelistScreen.optionsWidget.backButton.setFont(
-                    QFont(*FONT_LIST))
-                self.filelistScreen.optionsWidget.backButton.clicked.connect(goBack)
-                self.filelistScreen.optionsWidget.backButton.setToolTip(
-                    'Go back to welcome screen')
-                self.filelistScreen.optionsWidget.layout.addWidget(
-                    self.filelistScreen.optionsWidget.backButton)
-
-        # Bounce back to welcome screen with fail message if no valid file dropped
         else:
-            self.text.setText(STRING_WELCOME_FAIL)
-            self.text.setStyleSheet(STYLESHEET_MAIN)
+            self.text.setText(STRING_DROP_FAIL)
+            self.update()
+
 
 # Define main window
-
-
 class MAIN_WINDOW(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -474,39 +508,38 @@ class MAIN_WINDOW(QMainWindow):
     def init_gui(self):
         self.setWindowTitle(APP_NAME + ' v.' +
                             APP_VERSION + ' by ' + APP_AUTHOR)
-        self.resize(720, 480)
-        self.setWindowIcon(QIcon(resource_path(':/tewl_logo')))
+        self.setStyleSheet(STYLESHEET_CONTAINER)
+        self.resize(1024, 768)
+        self.setWindowIcon(QIcon(':/tewl_logo'))
         self.window = QWidget()
         self.layout = QGridLayout()
         self.setCentralWidget(self.window)
         self.window.setLayout(self.layout)
 
-        self.filelistScreen = QWidget()
+        # Define and show welcome screen
+        self.welcomeScreen = WELCOME_SCREEN()
+        self.layout.addWidget(self.welcomeScreen)
+        self.welcomeScreen.show()
+
+        # Define filelist screen
+        self.filelistScreen = FILELIST_SCREEN()
         self.layout.addWidget(self.filelistScreen)
         self.filelistScreen.hide()
 
-        self.welcomeScreen = WELCOME_SCREEN(self.filelistScreen)
-        self.layout.addWidget(self.welcomeScreen)
-        self.welcomeScreen.show() # Show the main window
-
-        # self.filelistScreen = FILELIST_SCREEN()
-        # self.layout.addWidget(self.filelistScreen)
-        # self.filelistScreen.hide()
-
-        # self.workingScreen = QWidget()
-        # self.layout.addWidget(self.workingScreen)
-        # self.workingScreen.hide()
-
-        # self.FINISHED_SCREEN = QWidget()
-        # self.layout.addWidget(self.FINISHED_SCREEN)
-        # self.FINISHED_SCREEN.hide()
+        # Define finished screen
+        self.finishedScreen = FINISHED_SCREEN(self)
+        self.layout.addWidget(self.finishedScreen)
+        self.finishedScreen.hide()
 
 
 # Initialise the programme
 if __name__ == '__main__':
     app = QApplication([])
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
-    app.setStyleSheet(STYLESHEET_CONTAINER)
+
+    QFontDatabase.addApplicationFont(':/tewl_h_font')
+    QFontDatabase.addApplicationFont(':/tewl_p_font')
+
     mainWindow = MAIN_WINDOW()
     mainWindow.show()
 
