@@ -4,6 +4,9 @@
 '''
 # tewlPDF
 # a simple PDF manipulator with PyQt5 GUI
+
+# Shortcut to recompile resources:
+# pyrcc5 resources.qrc -o resources.py
 '''
 
 # TODO: add tooltips
