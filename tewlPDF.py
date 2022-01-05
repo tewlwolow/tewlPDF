@@ -56,6 +56,12 @@ STRING_DROP = 'DROP IT HERE'
 STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
 STRING_FINISHED = 'It\'s done!'
 
+STRING_SPLIT = 'SPLIT'
+STRING_MERGE = 'MERGE'
+STRING_REVERSE = 'REVERSE'
+STRING_BACK = 'BACK'
+
+
 # Fonts
 FONT_MAIN = ['Darker Grotesque', 60]
 FONT_LIST = ['Zen Maru Gothic', 16]
@@ -364,47 +370,8 @@ class FilelistScreen(QWidget):
                 self.optionsWidget)
 
             # Add buttons based on file context
-            if len(self.__files) == 1:
-                self.optionsWidget.splitButton = QPushButton(
-                    'SPLIT')
-                self.optionsWidget.splitButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.splitButton.clicked.connect(
-                    self.splitPDF)
-                self.optionsWidget.splitButton.setToolTip(
-                    'Split file into single-page PDFs')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.splitButton)
-                self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
-
-                self.optionsWidget.reverseButton = QPushButton(
-                    'REVERSE')
-                self.optionsWidget.reverseButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.reverseButton.clicked.connect(
-                    self.reversePDF)
-                self.optionsWidget.reverseButton.setToolTip(
-                    'Reverse page order')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.reverseButton)
-                self.optionsWidget.reverseButton.setStyleSheet(
-                    STYLESHEET_BUTTON)
-
-                self.optionsWidget.backButton = QPushButton(
-                    'BACK')
-                self.optionsWidget.backButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.backButton.clicked.connect(
-                    self.goBack)
-                self.optionsWidget.backButton.setToolTip(
-                    'Go back to welcome screen')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.backButton)
-                self.optionsWidget.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
-
-            else:
-                self.optionsWidget.mergeButton = QPushButton(
-                    'MERGE')
+            if len(self.__files) > 1:
+                self.optionsWidget.mergeButton = QPushButton(STRING_MERGE)
                 self.optionsWidget.mergeButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.mergeButton.clicked.connect(
@@ -415,42 +382,40 @@ class FilelistScreen(QWidget):
                     self.optionsWidget.mergeButton)
                 self.optionsWidget.mergeButton.setStyleSheet(STYLESHEET_BUTTON)
 
-                self.optionsWidget.splitButton = QPushButton(
-                    'SPLIT')
-                self.optionsWidget.splitButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.splitButton.clicked.connect(
-                    self.splitPDF)
-                self.optionsWidget.splitButton.setToolTip(
-                    'Split files into single-page PDFs')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.splitButton)
-                self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
+            self.optionsWidget.splitButton = QPushButton(STRING_SPLIT)
+            self.optionsWidget.splitButton.setFont(
+                QFont(*FONT_LIST))
+            self.optionsWidget.splitButton.clicked.connect(
+                self.splitPDF)
+            self.optionsWidget.splitButton.setToolTip(
+                'Split files into single-page PDFs')
+            self.optionsWidget.layout.addWidget(
+                self.optionsWidget.splitButton)
+            self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
 
-                self.optionsWidget.reverseButton = QPushButton(
-                    'REVERSE')
-                self.optionsWidget.reverseButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.reverseButton.clicked.connect(
-                    self.reversePDF)
-                self.optionsWidget.reverseButton.setToolTip(
-                    'Reverse page order')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.reverseButton)
-                self.optionsWidget.reverseButton.setStyleSheet(
-                    STYLESHEET_BUTTON)
+            self.optionsWidget.reverseButton = QPushButton(STRING_REVERSE)
+            self.optionsWidget.reverseButton.setFont(
+                QFont(*FONT_LIST))
+            self.optionsWidget.reverseButton.clicked.connect(
+                self.reversePDF)
+            self.optionsWidget.reverseButton.setToolTip(
+                'Reverse page order')
+            self.optionsWidget.layout.addWidget(
+                self.optionsWidget.reverseButton)
+            self.optionsWidget.reverseButton.setStyleSheet(
+                STYLESHEET_BUTTON)
 
-                self.optionsWidget.backButton = QPushButton(
-                    'BACK')
-                self.optionsWidget.backButton.setFont(
-                    QFont(*FONT_LIST))
-                self.optionsWidget.backButton.clicked.connect(
-                    self.goBack)
-                self.optionsWidget.backButton.setToolTip(
-                    'Go back to welcome screen')
-                self.optionsWidget.layout.addWidget(
-                    self.optionsWidget.backButton)
-                self.optionsWidget.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
+            self.optionsWidget.backButton = QPushButton(STRING_BACK)
+            self.optionsWidget.backButton.setFont(
+                QFont(*FONT_LIST))
+            self.optionsWidget.backButton.clicked.connect(
+                self.goBack)
+            self.optionsWidget.backButton.setToolTip(
+                'Go back to welcome screen')
+            self.optionsWidget.layout.addWidget(
+                self.optionsWidget.backButton)
+            self.optionsWidget.backButton.setStyleSheet(
+                STYLESHEET_BUTTON_SECONDARY)
 
 
 class WelcomeScreen(QWidget):
