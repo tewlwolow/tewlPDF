@@ -23,11 +23,11 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 # Import all the required stuff
 # Keeping it tidy, it gets up bloated anyway
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog, QErrorMessage,
-							 QFileDialog, QGridLayout, QHBoxLayout,
-							 QInputDialog, QLabel, QListWidget,
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog, QDialogButtonBox, QErrorMessage,
+							 QFileDialog, QFormLayout, QGridLayout, QHBoxLayout,
+							 QInputDialog, QLabel, QLineEdit, QListWidget,
 							 QListWidgetItem, QMainWindow, QMessageBox, QPushButton,
-							 QSizeGrip, QStyle, QVBoxLayout, QWidget, qApp)
+							 QSizeGrip, QSpinBox, QStyle, QVBoxLayout, QWidget, qApp)
 
 import resources
 
@@ -60,6 +60,7 @@ STRING_MERGE = 'MERGE'
 STRING_REVERSE = 'REVERSE'
 STRING_BACK = 'BACK'
 STRING_CUT = 'CUT'
+STRING_EXTRACT = 'EXTRACT'
 
 STRING_INFO = """
 	<h2><center>tewlPDF v.{}</center></h2><br>
@@ -308,6 +309,86 @@ class FilelistScreen(QWidget):
 				self.clearData()
 				mainWindow.finishedScreen.show()
 
+	# Define extracting operation
+	def extractPDF(self):
+
+		# Nothing works here for hiding the ugly bar...
+		inputWindow = QDialog(self)
+		inputWindow.setWindowTitle('Pages to extract:')
+		inputWindow.first = QSpinBox(inputWindow)
+		inputWindow.last = QSpinBox(inputWindow)
+		buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, inputWindow);
+		layout = QFormLayout(inputWindow)
+		layout.addRow("First page", inputWindow.first)
+		layout.addRow("Last page", inputWindow.last)
+		layout.addWidget(buttonBox)
+		buttonBox.accepted.connect(inputWindow.accept)
+		buttonBox.rejected.connect(inputWindow.reject)
+		inputWindow.exec_()
+
+		first = int(inputWindow.first.value()) - 1 # Because we're using 0-indexed Pythonic numbering later on
+		last = int(inputWindow.last.value())
+
+		if first == 0 or last == 0:
+			self.hide()
+			self.show()
+			return
+
+		folderDialog = QFileDialog.getExistingDirectory(
+			self, 'Select Folder')
+
+		if not folderDialog:
+			self.hide()
+			self.show()
+			return
+
+		for f in self.__files:
+			fileName = Path(f)
+			while True:
+				try:
+					src = Pdf.open(f)
+					break
+				except PasswordError:
+					text, ok = QInputDialog.getText(
+						self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+					if ok and text:
+						self.PDFpassword = str(text)
+						try:
+							src = Pdf.open(
+								f, password=self.PDFpassword)
+							break
+						except PasswordError:
+							continue
+					else:
+						self.goBack()
+						return
+
+			if len(src.pages) <= last:
+				errorBox = QMessageBox()
+				errorBox.setIcon(QMessageBox.Critical)
+				errorBox.setText("Error!")
+				errorBox.setInformativeText("Invalid page number for file: " + fileName.stem + ". Skipping.")
+				errorBox.setWindowTitle("Error!")
+				errorBox.setWindowFlags(Qt.FramelessWindowHint)
+				errorBox.exec_()
+			else:
+				self.hide()
+
+				path = str(folderDialog + '/' +
+								f'{fileName.stem}_extracted.pdf')
+
+				dst = Pdf.new()
+
+				for page in src.pages[first:last]:
+					dst.pages.append(page)
+				dst.save(path)
+				dst.close()
+
+				src.close()
+
+				self.clearData()
+				mainWindow.finishedScreen.show()
+
 	# Define splitting operation
 	def splitPDF(self):
 		self.__files = [str(self.listWidget.item(i).text())
@@ -492,6 +573,17 @@ class FilelistScreen(QWidget):
 				self.optionsWidget.cutButton)
 			self.optionsWidget.cutButton.setStyleSheet(STYLESHEET_BUTTON)
 
+			self.optionsWidget.extractButton = QPushButton(STRING_EXTRACT)
+			self.optionsWidget.extractButton.setFont(
+				QFont(*FONT_LIST))
+			self.optionsWidget.extractButton.clicked.connect(
+				self.extractPDF)
+			self.optionsWidget.extractButton.setToolTip(
+				'Extract pages from PDF')
+			self.optionsWidget.layout.addWidget(
+				self.optionsWidget.extractButton)
+			self.optionsWidget.extractButton.setStyleSheet(STYLESHEET_BUTTON)
+
 			self.optionsWidget.splitButton = QPushButton(STRING_SPLIT)
 			self.optionsWidget.splitButton.setFont(
 				QFont(*FONT_LIST))
@@ -512,8 +604,7 @@ class FilelistScreen(QWidget):
 				'Reverse page order')
 			self.optionsWidget.layout.addWidget(
 				self.optionsWidget.reverseButton)
-			self.optionsWidget.reverseButton.setStyleSheet(
-				STYLESHEET_BUTTON)
+			self.optionsWidget.reverseButton.setStyleSheet(STYLESHEET_BUTTON)
 
 			self.optionsWidget.backButton = QPushButton(STRING_BACK)
 			self.optionsWidget.backButton.setFont(
