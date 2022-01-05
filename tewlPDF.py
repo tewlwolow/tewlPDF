@@ -9,8 +9,6 @@
 # pyrcc5 resources.qrc -o resources.py
 '''
 
-# TODO: add slicing
-# TODO: add cutting
 # TODO: add extracting
 
 ##############################################################################################################################
@@ -25,10 +23,10 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 # Import all the required stuff
 # Keeping it tidy, it gets up bloated anyway
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog,
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog, QErrorMessage,
 							 QFileDialog, QGridLayout, QHBoxLayout,
 							 QInputDialog, QLabel, QListWidget,
-							 QListWidgetItem, QMainWindow, QPushButton,
+							 QListWidgetItem, QMainWindow, QMessageBox, QPushButton,
 							 QSizeGrip, QStyle, QVBoxLayout, QWidget, qApp)
 
 import resources
@@ -86,10 +84,12 @@ STYLESHEET_CONTAINER = """
 	}
 """
 STYLESHEET_MAIN = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgb(0, 0, 0)'
+STYLESHEET_HIGHLIGHT = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgba(255, 255, 255, 0.6)'
+STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px; color: rgb(0, 0, 0); padding: 15px 15px 15px 15px;'
 STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.3); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
 STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
-STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px; color: rgb(0, 0, 0); padding: 15px 15px 15px 15px;'
-STYLESHEET_HIGHLIGHT = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgba(255, 255, 255, 0.6)'
+STYLESHEET_BUTTON_AGAIN = 'background-color: rgba(100, 50, 170, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0); margin-bottom: 10%'
+
 
 # Define window structure
 
@@ -111,8 +111,8 @@ class FinishedScreen(QWidget):
 		self.backButton = QPushButton('Again')
 		self.backButton.setFont(QFont(*FONT_LIST))
 		self.backButton.clicked.connect(restart)
-		self.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
-		self.layout.addWidget(self.backButton)
+		self.backButton.setStyleSheet(STYLESHEET_BUTTON_AGAIN)
+		self.layout.addWidget(self.backButton, 0, 0, -1, -1, alignment = Qt.AlignCenter | Qt.AlignBottom)
 		self.setLayout(self.layout)
 
 
@@ -246,10 +246,6 @@ class FilelistScreen(QWidget):
 			self.show()
 			return
 
-		f = self.__files[0]
-		fileName = Path(f)
-		self.hide()
-
 		folderDialog = QFileDialog.getExistingDirectory(
 			self, 'Select Folder')
 
@@ -258,47 +254,59 @@ class FilelistScreen(QWidget):
 			self.show()
 			return
 
-		while True:
-			try:
-				src = Pdf.open(f)
-				break
-			except PasswordError:
-				text, ok = QInputDialog.getText(
-					self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
-				if ok and text:
-					self.PDFpassword = str(text)
-					try:
-						src = Pdf.open(
-							f, password=self.PDFpassword)
-						break
-					except PasswordError:
-						continue
-				else:
-					self.goBack()
-					return
+		for f in self.__files:
+			fileName = Path(f)
+			while True:
+				try:
+					src = Pdf.open(f)
+					break
+				except PasswordError:
+					text, ok = QInputDialog.getText(
+						self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+					if ok and text:
+						self.PDFpassword = str(text)
+						try:
+							src = Pdf.open(
+								f, password=self.PDFpassword)
+							break
+						except PasswordError:
+							continue
+					else:
+						self.goBack()
+						return
 
-		path_1 = str(folderDialog + '/' +
-						   f'{fileName.stem}_part1.pdf')
+			if len(src.pages) <= limit:
+				errorBox = QMessageBox()
+				errorBox.setIcon(QMessageBox.Critical)
+				errorBox.setText("Error!")
+				errorBox.setInformativeText("Invalid page number for file: " + fileName.stem + ". Skipping.")
+				errorBox.setWindowTitle("Error!")
+				errorBox.setWindowFlags(Qt.FramelessWindowHint)
+				errorBox.exec_()
+			else:
+				self.hide()
+				path_1 = str(folderDialog + '/' +
+								f'{fileName.stem}_part1.pdf')
 
-		path_2 = str(folderDialog + '/' +
-						   f'{fileName.stem}_part2.pdf')
+				path_2 = str(folderDialog + '/' +
+								f'{fileName.stem}_part2.pdf')
 
-		dst_1 = Pdf.new()
-		for page in src.pages[:limit]:
-			dst_1.pages.append(page)
-		dst_1.save(path_1)
-		dst_1.close()
+				dst_1 = Pdf.new()
+				for page in src.pages[:limit]:
+					dst_1.pages.append(page)
+				dst_1.save(path_1)
+				dst_1.close()
 
-		dst_2 = Pdf.new()
-		for page in src.pages[limit:]:
-			dst_2.pages.append(page)		
-		dst_2.save(path_2)
-		dst_2.close()
+				dst_2 = Pdf.new()
+				for page in src.pages[limit:]:
+					dst_2.pages.append(page)		
+				dst_2.save(path_2)
+				dst_2.close()
 
-		src.close()
+				src.close()
 
-		self.clearData()
-		mainWindow.finishedScreen.show()
+				self.clearData()
+				mainWindow.finishedScreen.show()
 
 	# Define splitting operation
 	def splitPDF(self):
@@ -461,18 +469,6 @@ class FilelistScreen(QWidget):
 
 			# Add buttons based on file context
 
-			if len(self.__files) == 1:
-				self.optionsWidget.cutButton = QPushButton(STRING_CUT)
-				self.optionsWidget.cutButton.setFont(
-					QFont(*FONT_LIST))
-				self.optionsWidget.cutButton.clicked.connect(
-					self.cutPDF)
-				self.optionsWidget.cutButton.setToolTip(
-					'Cut PDF in two')
-				self.optionsWidget.layout.addWidget(
-					self.optionsWidget.cutButton)
-				self.optionsWidget.cutButton.setStyleSheet(STYLESHEET_BUTTON)
-
 			if len(self.__files) > 1:
 				self.optionsWidget.mergeButton = QPushButton(STRING_MERGE)
 				self.optionsWidget.mergeButton.setFont(
@@ -484,6 +480,17 @@ class FilelistScreen(QWidget):
 				self.optionsWidget.layout.addWidget(
 					self.optionsWidget.mergeButton)
 				self.optionsWidget.mergeButton.setStyleSheet(STYLESHEET_BUTTON)
+
+			self.optionsWidget.cutButton = QPushButton(STRING_CUT)
+			self.optionsWidget.cutButton.setFont(
+				QFont(*FONT_LIST))
+			self.optionsWidget.cutButton.clicked.connect(
+				self.cutPDF)
+			self.optionsWidget.cutButton.setToolTip(
+				'Cut PDF in two')
+			self.optionsWidget.layout.addWidget(
+				self.optionsWidget.cutButton)
+			self.optionsWidget.cutButton.setStyleSheet(STYLESHEET_BUTTON)
 
 			self.optionsWidget.splitButton = QPushButton(STRING_SPLIT)
 			self.optionsWidget.splitButton.setFont(
@@ -541,7 +548,7 @@ class WelcomeScreen(QWidget):
 		button.setIconSize(QSize(100, 100))
 		button.clicked.connect(self.infoClicked)
 		self.layout.addWidget(button, 0, 0, 1, 1,
-							  alignment=Qt.AlignCenter | Qt.AlignTop)
+							  alignment = Qt.AlignCenter | Qt.AlignTop)
 
 	def infoClicked(self, b):
 
@@ -565,7 +572,7 @@ class WelcomeScreen(QWidget):
 
 		dlg.mouseDoubleClickEvent = lambda event: dlg.hide()
 
-		dlg.exec()
+		dlg.exec_()
 
 	def dragEnterEvent(self, event):
 		# Define highlight style
