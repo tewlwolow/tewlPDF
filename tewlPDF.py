@@ -111,7 +111,7 @@ class FinishedScreen(QWidget):
 		self.backButton = QPushButton('Again')
 		self.backButton.setFont(QFont(*FONT_LIST))
 		self.backButton.clicked.connect(restart)
-		self.backButton.setStyleSheet(STYLESHEET_BUTTON)
+		self.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
 		self.layout.addWidget(self.backButton)
 		self.setLayout(self.layout)
 
@@ -248,6 +248,7 @@ class FilelistScreen(QWidget):
 
 		f = self.__files[0]
 		fileName = Path(f)
+		self.hide()
 
 		folderDialog = QFileDialog.getExistingDirectory(
 			self, 'Select Folder')
@@ -256,8 +257,6 @@ class FilelistScreen(QWidget):
 			self.hide()
 			self.show()
 			return
-
-		self.hide()
 
 		while True:
 			try:
