@@ -11,12 +11,13 @@
 
 # TODO: add slicing
 # TODO: add cutting
+# TODO: add extracting
 
 ##############################################################################################################################
 
 import os
 import sys
-import time
+
 from pathlib import Path
 
 from pikepdf import PasswordError, Pdf
@@ -24,11 +25,11 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 # Import all the required stuff
 # Keeping it tidy, it gets up bloated anyway
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog, QFileDialog,
-							 QGridLayout, QHBoxLayout, QInputDialog, QLabel,
-							 QListWidget, QListWidgetItem, QMainWindow,
-							 QPushButton, QSizeGrip, QStyle, QVBoxLayout, QWidget,
-							 qApp)
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog,
+							 QFileDialog, QGridLayout, QHBoxLayout,
+							 QInputDialog, QLabel, QListWidget,
+							 QListWidgetItem, QMainWindow, QPushButton,
+							 QSizeGrip, QStyle, QVBoxLayout, QWidget, qApp)
 
 import resources
 
@@ -48,7 +49,7 @@ def resource_path(relative_path):
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
-APP_VERSION = '0.3.1 dev WIP'  # TODO: 1.0 when done!
+APP_VERSION = '0.9'
 APP_AUTHOR = 'tewlwolow'
 
 # Messages
@@ -60,15 +61,17 @@ STRING_SPLIT = 'SPLIT'
 STRING_MERGE = 'MERGE'
 STRING_REVERSE = 'REVERSE'
 STRING_BACK = 'BACK'
+STRING_CUT = 'CUT'
 
 STRING_INFO = """
-	<h2><center>tewlPDF</center></h2><br>
+	<h2><center>tewlPDF v.{}</center></h2><br>
 	Drag and drop files into main window to manipulate them.<br>
+	Grab corners to resize. Click and move to reposition.<br>
 	Double-click app window to exit.<br>
 	Double-click list items to remove them.<br>
 	Double-click on this dialog to close it.<br><br>
-	Created by Leon Czernecki, 2022-21.<br>
-	<a style="color:lightblue" target="_blank" href = "https:/www.github.com/tewlwolow"><big>github.com/tewlwolow</big></a>  
+	© Created by <strong>Leon Czernecki</strong>, 2022-21.<br>
+	<a style="color:lightblue" href = "https:/www.github.com/tewlwolow">github.com/tewlwolow</a>  
 """
 
 # Fonts
@@ -85,7 +88,7 @@ STYLESHEET_CONTAINER = """
 STYLESHEET_MAIN = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgb(0, 0, 0)'
 STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.3); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
 STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
-STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px; color: rgb(0, 0, 0)'
+STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px; color: rgb(0, 0, 0); padding: 15px 15px 15px 15px;'
 STYLESHEET_HIGHLIGHT = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgba(255, 255, 255, 0.6)'
 
 # Define window structure
@@ -225,6 +228,75 @@ class FilelistScreen(QWidget):
 
 		pdf.save(path)
 		pdf.close()
+
+		self.clearData()
+		mainWindow.finishedScreen.show()
+
+	# Define cutting operation
+	def cutPDF(self):
+
+		# Nothing works here for hiding the ugly bar...
+		inputWindow = QInputDialog(self)
+
+		limit, ok = inputWindow.getInt(
+		   self, 'Give details', 'The last page to be included in the first file:')
+
+		if not ok or limit == 0:
+			self.hide()
+			self.show()
+			return
+
+		f = self.__files[0]
+		fileName = Path(f)
+
+		folderDialog = QFileDialog.getExistingDirectory(
+			self, 'Select Folder')
+
+		if not folderDialog:
+			self.hide()
+			self.show()
+			return
+
+		self.hide()
+
+		while True:
+			try:
+				src = Pdf.open(f)
+				break
+			except PasswordError:
+				text, ok = QInputDialog.getText(
+					self, 'Password required', 'File:\n' + fileName.name + '\nis protected by a password.\n\nProvide password:')
+				if ok and text:
+					self.PDFpassword = str(text)
+					try:
+						src = Pdf.open(
+							f, password=self.PDFpassword)
+						break
+					except PasswordError:
+						continue
+				else:
+					self.goBack()
+					return
+
+		path_1 = str(folderDialog + '/' +
+						   f'{fileName.stem}_part1.pdf')
+
+		path_2 = str(folderDialog + '/' +
+						   f'{fileName.stem}_part2.pdf')
+
+		dst_1 = Pdf.new()
+		for page in src.pages[:limit]:
+			dst_1.pages.append(page)
+		dst_1.save(path_1)
+		dst_1.close()
+
+		dst_2 = Pdf.new()
+		for page in src.pages[limit:]:
+			dst_2.pages.append(page)		
+		dst_2.save(path_2)
+		dst_2.close()
+
+		src.close()
 
 		self.clearData()
 		mainWindow.finishedScreen.show()
@@ -371,7 +443,6 @@ class FilelistScreen(QWidget):
 		for f in self.__files:
 			i = QListWidgetItem(
 				(self.style().standardIcon(QStyle.SP_FileDialogDetailedView)), f, self.listWidget)
-			# self.style().standardIcon(QStyle.SP_DialogCancelButton)
 
 		if len(self.__files):
 			# Advance if provided with valid files
@@ -390,6 +461,19 @@ class FilelistScreen(QWidget):
 				self.optionsWidget)
 
 			# Add buttons based on file context
+
+			if len(self.__files) == 1:
+				self.optionsWidget.cutButton = QPushButton(STRING_CUT)
+				self.optionsWidget.cutButton.setFont(
+					QFont(*FONT_LIST))
+				self.optionsWidget.cutButton.clicked.connect(
+					self.cutPDF)
+				self.optionsWidget.cutButton.setToolTip(
+					'Cut PDF in two')
+				self.optionsWidget.layout.addWidget(
+					self.optionsWidget.cutButton)
+				self.optionsWidget.cutButton.setStyleSheet(STYLESHEET_BUTTON)
+
 			if len(self.__files) > 1:
 				self.optionsWidget.mergeButton = QPushButton(STRING_MERGE)
 				self.optionsWidget.mergeButton.setFont(
@@ -453,9 +537,9 @@ class WelcomeScreen(QWidget):
 		self.text.setStyleSheet(STYLESHEET_MAIN)
 		self.text.setFont(QFont(*FONT_MAIN))
 
-		button = QPushButton(QIcon(':/tewl_logo_black'), "")
+		button = QPushButton(QIcon(':/tewl_logo'), "")
 		button.setStyleSheet('background-color: transparent; margin-top: 20px')
-		button.setIconSize(QSize(100, 100)) 
+		button.setIconSize(QSize(100, 100))
 		button.clicked.connect(self.infoClicked)
 		self.layout.addWidget(button, 0, 0, 1, 1,
 							  alignment=Qt.AlignCenter | Qt.AlignTop)
@@ -470,7 +554,7 @@ class WelcomeScreen(QWidget):
 		dlg.text = QLabel()
 		dlg.text.setOpenExternalLinks(True)
 		dlg.text.setTextFormat(Qt.RichText)
-		dlg.text.setText(STRING_INFO)
+		dlg.text.setText(STRING_INFO.format(APP_VERSION))
 		dlg.text.setAlignment(Qt.AlignCenter)
 		dlg.text.setFont(QFont(*FONT_LIST))
 
@@ -478,7 +562,7 @@ class WelcomeScreen(QWidget):
 
 		dlg.layout.addWidget(dlg.text)
 		dlg.setLayout(dlg.layout)
-		dlg.setWindowOpacity(0.9)
+		dlg.setWindowOpacity(0.95)
 
 		dlg.mouseDoubleClickEvent = lambda event: dlg.hide()
 
