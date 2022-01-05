@@ -20,11 +20,11 @@ import time
 from pathlib import Path
 
 from pikepdf import PasswordError, Pdf
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QFontDatabase, QIcon, QRegion
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 # Import all the required stuff
 # Keeping it tidy, it gets up bloated anyway
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QFileDialog,
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QDialog, QFileDialog,
 							 QGridLayout, QHBoxLayout, QInputDialog, QLabel,
 							 QListWidget, QListWidgetItem, QMainWindow,
 							 QPushButton, QSizeGrip, QStyle, QVBoxLayout, QWidget,
@@ -61,6 +61,15 @@ STRING_MERGE = 'MERGE'
 STRING_REVERSE = 'REVERSE'
 STRING_BACK = 'BACK'
 
+STRING_INFO = """
+	<h2><center>tewlPDF</center></h2><br>
+	Drag and drop files into main window to manipulate them.<br>
+	Double-click app window to exit.<br>
+	Double-click list items to remove them.<br>
+	Double-click on this dialog to close it.<br><br>
+	Created by Leon Czernecki, 2022-21.<br>
+	<a style="color:lightblue" target="_blank" href = "https:/www.github.com/tewlwolow"><big>github.com/tewlwolow</big></a>  
+"""
 
 # Fonts
 FONT_MAIN = ['Darker Grotesque', 60]
@@ -74,9 +83,9 @@ STYLESHEET_CONTAINER = """
 	}
 """
 STYLESHEET_MAIN = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgb(0, 0, 0)'
-STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.2); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
-STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.3); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
-STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.4); border-radius: 25px; color: rgb(0, 0, 0)'
+STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.3); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
+STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
+STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px; color: rgb(0, 0, 0)'
 STYLESHEET_HIGHLIGHT = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgba(255, 255, 255, 0.6)'
 
 # Define window structure
@@ -116,6 +125,7 @@ class FilelistScreen(QWidget):
 		self.listWidget.setFont(QFont(*FONT_LIST))
 		self.listWidget.setStyleSheet(STYLESHEET_LIST)
 		self.listWidget.itemDoubleClicked.connect(self.removeListItem)
+
 		self.setLayout(self.layout)
 
 	def setFiles(self, files):
@@ -369,7 +379,6 @@ class FilelistScreen(QWidget):
 			self.hide()
 			self.show()
 
-
 			# Construct window content
 			self.optionsWidget = QWidget(self)
 			self.optionsWidget.layout = QVBoxLayout(
@@ -443,6 +452,37 @@ class WelcomeScreen(QWidget):
 		self.text.setAlignment(Qt.AlignCenter)
 		self.text.setStyleSheet(STYLESHEET_MAIN)
 		self.text.setFont(QFont(*FONT_MAIN))
+
+		button = QPushButton(QIcon(':/tewl_logo_black'), "")
+		button.setStyleSheet('background-color: transparent; margin-top: 20px')
+		button.setIconSize(QSize(100, 100)) 
+		button.clicked.connect(self.infoClicked)
+		self.layout.addWidget(button, 0, 0, 1, 1,
+							  alignment=Qt.AlignCenter | Qt.AlignTop)
+
+	def infoClicked(self, b):
+
+		dlg = QDialog(self)
+		dlg.setWindowTitle("Info")
+		dlg.setWindowFlags(Qt.SplashScreen)
+		dlg.layout = QGridLayout()
+
+		dlg.text = QLabel()
+		dlg.text.setOpenExternalLinks(True)
+		dlg.text.setTextFormat(Qt.RichText)
+		dlg.text.setText(STRING_INFO)
+		dlg.text.setAlignment(Qt.AlignCenter)
+		dlg.text.setFont(QFont(*FONT_LIST))
+
+		dlg.setStyleSheet('background-color: rgb(50,10,40); color: beige')
+
+		dlg.layout.addWidget(dlg.text)
+		dlg.setLayout(dlg.layout)
+		dlg.setWindowOpacity(0.9)
+
+		dlg.mouseDoubleClickEvent = lambda event: dlg.hide()
+
+		dlg.exec()
 
 	def dragEnterEvent(self, event):
 		# Define highlight style
