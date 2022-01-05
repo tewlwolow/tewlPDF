@@ -9,41 +9,27 @@
 # pyrcc5 resources.qrc -o resources.py
 '''
 
-# TODO: add tooltips
 # TODO: add slicing
 # TODO: add cutting
 
-# TODO: actual, proper, clean OOP - Command DD?
-
-# Classes=windows: dragdrop, list, it's done
-
 ##############################################################################################################################
 
+import os
+import sys
+import time
+from pathlib import Path
+
+from pikepdf import PasswordError, Pdf
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QFontDatabase, QIcon, QRegion
 # Import all the required stuff
 # Keeping it tidy, it gets up bloated anyway
-from PyQt5.QtWidgets import (
-    QPushButton,
-    QHBoxLayout,
-    QVBoxLayout,
-    QGridLayout,
-    QWidget,
-    QMainWindow,
-    QApplication,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QInputDialog,
-    QAbstractItemView,
-    QFileDialog
-)
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QFileDialog,
+                             QGridLayout, QHBoxLayout, QInputDialog, QLabel,
+                             QListWidget, QListWidgetItem, QMainWindow,
+                             QPushButton, QSizeGrip, QVBoxLayout, QWidget,
+                             qApp)
 
-from PyQt5.QtGui import QFont, QIcon, QFontDatabase
-from PyQt5.QtCore import Qt
-from pathlib import Path
-from pikepdf import PasswordError, Pdf
-import sys
-import os
-import time
 import resources
 
 # Required for auto-py-to-exe to work properly
@@ -70,25 +56,27 @@ STRING_DROP = 'DROP IT HERE'
 STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
 STRING_FINISHED = 'It\'s done!'
 
-# STYLESHEET_CONTAINER finals
-FONT_MAIN = ['Darker Grotesque', 55]
-FONT_LIST = ['Zen Maru Gothic', 14]
+# Fonts
+FONT_MAIN = ['Darker Grotesque', 60]
+FONT_LIST = ['Zen Maru Gothic', 16]
 
 # Define stylesheets
 # Using paths from resource_rc cuz, again, auto-py-to-exe
 STYLESHEET_CONTAINER = """
-	MAIN_WINDOW {
-		background-image: url(:tewl_container);
+	MainWindow {
+		background-image: url(:tewl_bg_main);
 	}
 """
-STYLESHEET_MAIN = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgb(0, 0, 0)'
-STYLESHEET_LIST = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgb(0, 0, 0)'
-STYLESHEET_HIGHLIGHT = 'background-image: url(:/tewl_bg_main); border: 2px solid black; border-radius: 50px; color: rgba(0, 0, 139, 130)'
+STYLESHEET_MAIN = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgb(0, 0, 0)'
+STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.2); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
+STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.3); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
+STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.4); border-radius: 25px; color: rgb(0, 0, 0)'
+STYLESHEET_HIGHLIGHT = 'background-color: rgba(255,255,255,0.15); border-radius: 50px; color: rgba(255, 255, 255, 0.6)'
 
 # Define window structure
 
 
-class FINISHED_SCREEN(QWidget):
+class FinishedScreen(QWidget):
     def __init__(self, main):
         super().__init__()
 
@@ -105,11 +93,12 @@ class FINISHED_SCREEN(QWidget):
         self.backButton = QPushButton('Again')
         self.backButton.setFont(QFont(*FONT_LIST))
         self.backButton.clicked.connect(restart)
+        self.backButton.setStyleSheet(STYLESHEET_BUTTON)
         self.layout.addWidget(self.backButton)
         self.setLayout(self.layout)
 
 
-class FILELIST_SCREEN(QWidget):
+class FilelistScreen(QWidget):
     def __init__(self):
         super().__init__()
         self.setAcceptDrops(True)
@@ -360,7 +349,7 @@ class FILELIST_SCREEN(QWidget):
 
         if len(self.__files):
             # Advance if provided with valid files
-			# Update doesn't work. Bummer
+            # Update doesn't work. Bummer
             self.hide()
             self.show()
 
@@ -377,7 +366,7 @@ class FILELIST_SCREEN(QWidget):
             # Add buttons based on file context
             if len(self.__files) == 1:
                 self.optionsWidget.splitButton = QPushButton(
-                    'Split PDF')
+                    'SPLIT')
                 self.optionsWidget.splitButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.splitButton.clicked.connect(
@@ -386,9 +375,10 @@ class FILELIST_SCREEN(QWidget):
                     'Split file into single-page PDFs')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.splitButton)
+                self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
 
                 self.optionsWidget.reverseButton = QPushButton(
-                    'Reverse PDF')
+                    'REVERSE')
                 self.optionsWidget.reverseButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.reverseButton.clicked.connect(
@@ -397,9 +387,11 @@ class FILELIST_SCREEN(QWidget):
                     'Reverse page order')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.reverseButton)
+                self.optionsWidget.reverseButton.setStyleSheet(
+                    STYLESHEET_BUTTON)
 
                 self.optionsWidget.backButton = QPushButton(
-                    'Back')
+                    'BACK')
                 self.optionsWidget.backButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.backButton.clicked.connect(
@@ -408,10 +400,11 @@ class FILELIST_SCREEN(QWidget):
                     'Go back to welcome screen')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.backButton)
+                self.optionsWidget.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
 
             else:
                 self.optionsWidget.mergeButton = QPushButton(
-                    'Merge PDFs')
+                    'MERGE')
                 self.optionsWidget.mergeButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.mergeButton.clicked.connect(
@@ -420,9 +413,10 @@ class FILELIST_SCREEN(QWidget):
                     'Merge files into one PDF')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.mergeButton)
+                self.optionsWidget.mergeButton.setStyleSheet(STYLESHEET_BUTTON)
 
                 self.optionsWidget.splitButton = QPushButton(
-                    'Split PDFs')
+                    'SPLIT')
                 self.optionsWidget.splitButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.splitButton.clicked.connect(
@@ -431,9 +425,10 @@ class FILELIST_SCREEN(QWidget):
                     'Split files into single-page PDFs')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.splitButton)
+                self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
 
                 self.optionsWidget.reverseButton = QPushButton(
-                    'Reverse PDFs')
+                    'REVERSE')
                 self.optionsWidget.reverseButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.reverseButton.clicked.connect(
@@ -442,9 +437,11 @@ class FILELIST_SCREEN(QWidget):
                     'Reverse page order')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.reverseButton)
+                self.optionsWidget.reverseButton.setStyleSheet(
+                    STYLESHEET_BUTTON)
 
                 self.optionsWidget.backButton = QPushButton(
-                    'Back')
+                    'BACK')
                 self.optionsWidget.backButton.setFont(
                     QFont(*FONT_LIST))
                 self.optionsWidget.backButton.clicked.connect(
@@ -453,9 +450,10 @@ class FILELIST_SCREEN(QWidget):
                     'Go back to welcome screen')
                 self.optionsWidget.layout.addWidget(
                     self.optionsWidget.backButton)
+                self.optionsWidget.backButton.setStyleSheet(STYLESHEET_BUTTON_SECONDARY)
 
 
-class WELCOME_SCREEN(QWidget):
+class WelcomeScreen(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -474,7 +472,7 @@ class WELCOME_SCREEN(QWidget):
         # Define highlight style
         self.text.setStyleSheet(STYLESHEET_HIGHLIGHT)
 
-        # Bounce off mouse clicks
+        # Bounce off mouse clicks just in case something weird happens
         if event.mimeData().hasUrls():
             event.accept()
         else:
@@ -500,34 +498,71 @@ class WELCOME_SCREEN(QWidget):
 
 
 # Define main window
-class MAIN_WINDOW(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.init_gui()
+        self.initGUI()
 
-    def init_gui(self):
+    def resizeEvent(self, event):
+        QMainWindow.resizeEvent(self, event)
+        rect = self.rect()
+        # top left grip doesn't need to be moved...
+        # top right
+        self.grips[1].move(rect.right() - self.gripSize, 0)
+        # bottom right
+        self.grips[2].move(
+            rect.right() - self.gripSize, rect.bottom() - self.gripSize)
+        # bottom left
+        self.grips[3].move(0, rect.bottom() - self.gripSize)
+
+    def mousePressEvent(self, ev):
+        self.old_pos = ev.screenPos()
+
+    def mouseMoveEvent(self, ev):
+        if self.clicked:
+            dx = self.old_pos.x() - ev.screenPos().x()
+            dy = self.old_pos.y() - ev.screenPos().y()
+            # A bunch of explicit conversions cuz Python complains implicit one is gonna get deprecated real soon
+            self.move(int(self.pos().x()) - int(dx),
+                      int(self.pos().y()) - int(dy))
+        self.old_pos = ev.screenPos()
+        self.clicked = True
+        return QWidget.mouseMoveEvent(self, ev)
+
+    def initGUI(self):
         self.setWindowTitle(APP_NAME + ' v.' +
                             APP_VERSION + ' by ' + APP_AUTHOR)
         self.setStyleSheet(STYLESHEET_CONTAINER)
-        self.resize(1024, 768)
+        self.resize(1200, 800)
         self.setWindowIcon(QIcon(':/tewl_logo'))
         self.window = QWidget()
         self.layout = QGridLayout()
         self.setCentralWidget(self.window)
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.window.setLayout(self.layout)
 
+        self.mouseDoubleClickEvent = lambda event: qApp.quit()
+        self.clicked = False
+
+        self.gripSize = 16
+        self.grips = []
+        for i in range(4):
+            grip = QSizeGrip(self)
+            grip.resize(self.gripSize, self.gripSize)
+            self.grips.append(grip)
+
         # Define and show welcome screen
-        self.welcomeScreen = WELCOME_SCREEN()
+        self.welcomeScreen = WelcomeScreen()
         self.layout.addWidget(self.welcomeScreen)
         self.welcomeScreen.show()
 
         # Define filelist screen
-        self.filelistScreen = FILELIST_SCREEN()
+        self.filelistScreen = FilelistScreen()
         self.layout.addWidget(self.filelistScreen)
         self.filelistScreen.hide()
 
         # Define finished screen
-        self.finishedScreen = FINISHED_SCREEN(self)
+        self.finishedScreen = FinishedScreen(self)
         self.layout.addWidget(self.finishedScreen)
         self.finishedScreen.hide()
 
@@ -540,7 +575,7 @@ if __name__ == '__main__':
     QFontDatabase.addApplicationFont(':/tewl_h_font')
     QFontDatabase.addApplicationFont(':/tewl_p_font')
 
-    mainWindow = MAIN_WINDOW()
+    mainWindow = MainWindow()
     mainWindow.show()
 
     sys.exit(app.exec_())
