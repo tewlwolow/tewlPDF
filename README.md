@@ -9,6 +9,7 @@ tewlPDF is a simple programme to merge, split, reverse, cut or extract pages fro
 - Merge, split, reverse, cut, extract pages
 - Reasonably fast and safe (no data collection involved! :>)
 - Correctly handles password-protected files
+- Portable (no installation needed, run everywhere)
 
 
 ## Installation
