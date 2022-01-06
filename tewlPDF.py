@@ -337,15 +337,22 @@ class FilelistScreen(QWidget):
 			self.reShow()
 			return
 
-		folderDialog = QFileDialog.getExistingDirectory(
-			self, 'Select Folder')
-
-		if not folderDialog:
-			self.reShow()
-			return
-		
-		for f in self.__files:
+		# Different file/folder handling based on no files
+		if len(self.__files) == 1:
+			f = self.__files[0]
 			fileName = Path(f)
+
+			saveDialog = QFileDialog.getSaveFileName(
+				self,
+				'Save reversed PDF',
+				fileName.stem + '_extracted',
+				'Portable Document Files (*.pdf)')
+			path = str(saveDialog[0])
+
+			if not path:
+				self.reShow()
+				return
+
 			src = self.getSafeFile(f)
 			if not src:
 				self.reShow()
@@ -363,9 +370,6 @@ class FilelistScreen(QWidget):
 			else:
 				self.hide()
 
-				path = str(folderDialog + '/' +
-						   f'{fileName.stem}_extracted.pdf')
-
 				dst = Pdf.new()
 
 				# Write the selected slice to a new file
@@ -375,6 +379,45 @@ class FilelistScreen(QWidget):
 				dst.close()
 
 				src.close()
+		else:
+			folderDialog = QFileDialog.getExistingDirectory(
+				self, 'Select Folder')
+
+			if not folderDialog:
+				self.reShow()
+				return
+			
+			for f in self.__files:
+				fileName = Path(f)
+				src = self.getSafeFile(f)
+				if not src:
+					self.reShow()
+					return
+
+				if len(src.pages) <= last:
+					errorBox = QMessageBox()
+					errorBox.setIcon(QMessageBox.Critical)
+					errorBox.setText("Error!")
+					errorBox.setInformativeText(
+						"Invalid page number for file: " + fileName.stem + ". Skipping.")
+					errorBox.setWindowTitle("Error!")
+					errorBox.setWindowFlags(Qt.FramelessWindowHint)
+					errorBox.exec_()
+				else:
+					self.hide()
+
+					path = str(folderDialog + '/' +
+							f'{fileName.stem}_extracted.pdf')
+
+					dst = Pdf.new()
+
+					# Write the selected slice to a new file
+					for page in src.pages[first:last]:
+						dst.pages.append(page)
+					dst.save(path)
+					dst.close()
+
+					src.close()
 
 		self.clearData()
 		mainWindow.finishedScreen.show()
