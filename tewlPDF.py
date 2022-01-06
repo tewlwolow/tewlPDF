@@ -42,7 +42,7 @@ def resource_path(relative_path):
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
-APP_VERSION = '0.9'
+APP_VERSION = '0.9.1'
 APP_AUTHOR = 'tewlwolow'
 
 # Messages
@@ -65,6 +65,7 @@ STRING_INFO = """
 	© Created by <strong>Leon Czernecki</strong>, 2022-21.<br>
 	<a style="color:lightblue" href = "https:/www.github.com/tewlwolow">github.com/tewlwolow</a>  
 """
+STRING_EXIT = "Are you sure you want to exit?"
 
 # Fonts
 FONT_MAIN = ['Darker Grotesque', 60]
@@ -658,8 +659,6 @@ class MainWindow(QMainWindow):
 		# Yayyyy modern design!
 		self.setWindowFlags(Qt.FramelessWindowHint)
 		self.window.setLayout(self.layout)
-		# Immersive escape route
-		self.mouseDoubleClickEvent = lambda event: qApp.quit()
 		self.clicked = False
 
 		# Not 100% sure it's the best we can do here, but oh well
@@ -684,6 +683,18 @@ class MainWindow(QMainWindow):
 		self.finishedScreen = FinishedScreen(self)
 		self.layout.addWidget(self.finishedScreen)
 		self.finishedScreen.hide()
+
+	# Immersive escape route
+	def mouseDoubleClickEvent(self, event):
+		msg = STRING_EXIT
+		reply = QMessageBox.question(self, 'Message', 
+						msg, QMessageBox.Yes, QMessageBox.No)
+
+		if reply == QMessageBox.Yes:
+			event.accept()
+			qApp.quit()
+		else:
+			event.ignore()
 
 	def resizeEvent(self, event):
 		QMainWindow.resizeEvent(self, event)
