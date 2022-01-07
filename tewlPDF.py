@@ -573,7 +573,7 @@ class FilelistScreen(QWidget):
 			self.initButton(self.optionsWidget.reverseButton, TOOLTIP_REVERSE, self.reversePDF, STYLESHEET_BUTTON)
 
 			self.optionsWidget.backButton = QPushButton(STRING_BACK)
-			self.initButton(self.optionsWidget.reverseButton, TOOLTIP_BACK, self.goBack, STYLESHEET_BUTTON)
+			self.initButton(self.optionsWidget.backButton, TOOLTIP_BACK, self.goBack, STYLESHEET_BUTTON_SECONDARY)
 
 
 class WelcomeScreen(QWidget):
