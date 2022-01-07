@@ -49,6 +49,9 @@ APP_AUTHOR = 'tewlwolow'
 STRING_DROP = 'DROP IT HERE'
 STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
 STRING_FINISHED = 'It\'s done!'
+STRING_ERROR = '<h2><strong>Error!<strong></h2>'
+STRING_ERRORMESSAGE = STRING_ERRORMESSAGE = "Invalid page number for file:<br><strong>{}</strong><br>Skipping."
+
 
 STRING_SPLIT = 'SPLIT'
 STRING_MERGE = 'MERGE'
@@ -205,6 +208,17 @@ class FilelistScreen(QWidget):
 		self.hide()
 		self.show()
 
+	# For showing out of index errors
+	def showPageError(self, filename):
+		errorBox = QMessageBox()
+		errorBox.setIcon(QMessageBox.Critical)
+		errorBox.setTextFormat(Qt.RichText)
+		errorBox.setText(STRING_ERROR)
+		errorBox.setInformativeText(STRING_ERRORMESSAGE.format(filename.stem))
+		errorBox.setWindowTitle(STRING_ERROR)
+		errorBox.setWindowFlags(Qt.FramelessWindowHint)
+		errorBox.exec_()
+
 	# Fairly cumbersome loop for handling errors due to encrypted files
 	def getSafeFile(self, f):
 		while True:
@@ -287,14 +301,7 @@ class FilelistScreen(QWidget):
 
 			# Check for OutOfBounds type error
 			if len(src.pages) <= limit:
-				errorBox = QMessageBox()
-				errorBox.setIcon(QMessageBox.Critical)
-				errorBox.setText("Error!")
-				errorBox.setInformativeText(
-					"Invalid page number for file: " + fileName.stem + ". Skipping.")
-				errorBox.setWindowTitle("Error!")
-				errorBox.setWindowFlags(Qt.FramelessWindowHint)
-				errorBox.exec_()
+				self.showPageError(fileName)
 				return
 			else:
 				self.hide()
@@ -372,14 +379,7 @@ class FilelistScreen(QWidget):
 				return
 
 			if len(src.pages) <= last:
-				errorBox = QMessageBox()
-				errorBox.setIcon(QMessageBox.Critical)
-				errorBox.setText("Error!")
-				errorBox.setInformativeText(
-					"Invalid page number for file: " + fileName.stem + ". Skipping.")
-				errorBox.setWindowTitle("Error!")
-				errorBox.setWindowFlags(Qt.FramelessWindowHint)
-				errorBox.exec_()
+				self.showPageError(fileName)
 				return
 			else:
 				self.hide()
@@ -409,14 +409,7 @@ class FilelistScreen(QWidget):
 					return
 
 				if len(src.pages) <= last:
-					errorBox = QMessageBox()
-					errorBox.setIcon(QMessageBox.Critical)
-					errorBox.setText("Error!")
-					errorBox.setInformativeText(
-						"Invalid page number for file: " + fileName.stem + ". Skipping.")
-					errorBox.setWindowTitle("Error!")
-					errorBox.setWindowFlags(Qt.FramelessWindowHint)
-					errorBox.exec_()
+					self.showPageError(fileName)
 					return
 				else:
 					self.hide()
