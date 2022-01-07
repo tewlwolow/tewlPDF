@@ -49,12 +49,21 @@ APP_AUTHOR = 'tewlwolow'
 STRING_DROP = 'DROP IT HERE'
 STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
 STRING_FINISHED = 'It\'s done!'
+
 STRING_SPLIT = 'SPLIT'
 STRING_MERGE = 'MERGE'
 STRING_REVERSE = 'REVERSE'
 STRING_BACK = 'BACK'
 STRING_CUT = 'CUT'
 STRING_EXTRACT = 'EXTRACT'
+
+TOOLTIP_SPLIT = 'Split files into single-page PDFs'
+TOOLTIP_MERGE = 'Merge files into one PDF'
+TOOLTIP_REVERSE = 'Reverse page order'
+TOOLTIP_BACK = 'Go back to welcome screen'
+TOOLTIP_CUT = 'Cut PDF in two'
+TOOLTIP_EXTRACT = 'Extract pages from PDF'
+
 STRING_INFO = """
 	<h2><center>tewlPDF v.{}</center></h2><br>
 	Drag and drop files into main window to manipulate them.<br>
@@ -84,7 +93,6 @@ STYLESHEET_LIST = 'background-color: rgba(255,255,255,0.3); border-radius: 25px;
 STYLESHEET_BUTTON = 'background-color: rgba(255, 25, 30, 0.3); padding: 10px 10px 10px 10px; border: 2px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
 STYLESHEET_BUTTON_SECONDARY = 'background-color: rgba(120, 80, 120, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0)'
 STYLESHEET_BUTTON_AGAIN = 'background-color: rgba(100, 50, 170, 0.2); padding: 10px 10px 10px 10px; border: 1px solid rgba(0,0,0,0.2); border-radius: 25%; color: rgb(0, 0, 0); margin-bottom: 10%'
-
 
 # Define window structure
 
@@ -460,6 +468,7 @@ class FilelistScreen(QWidget):
 		self.hide()
 
 		# Different file/folder handling based on no files
+		# TODO: Refactor? Too much repetition here I fear
 		if len(self.__files) == 1:
 			f = self.__files[0]
 			fileName = Path(f)
@@ -514,6 +523,13 @@ class FilelistScreen(QWidget):
 		self.clearData()
 		mainWindow.finishedScreen.show()
 
+	def initButton(self, button, tooltip, func, style):
+		button.setFont(QFont(*FONT_LIST))
+		button.clicked.connect(func)
+		button.setToolTip(tooltip)
+		self.optionsWidget.layout.addWidget(button)
+		button.setStyleSheet(style)
+
 	# Create list objects for each valid file
 
 	def parseFiles(self):
@@ -542,72 +558,22 @@ class FilelistScreen(QWidget):
 			# Can only merge more than one file, right?
 			if len(self.__files) > 1:
 				self.optionsWidget.mergeButton = QPushButton(STRING_MERGE)
-				self.optionsWidget.mergeButton.setFont(
-					QFont(*FONT_LIST))
-				self.optionsWidget.mergeButton.clicked.connect(
-					self.mergePDF)
-				self.optionsWidget.mergeButton.setToolTip(
-					'Merge files into one PDF')
-				self.optionsWidget.layout.addWidget(
-					self.optionsWidget.mergeButton)
-				self.optionsWidget.mergeButton.setStyleSheet(STYLESHEET_BUTTON)
+				self.initButton(self.optionsWidget.mergeButton, TOOLTIP_MERGE, self.mergePDF, STYLESHEET_BUTTON)
 
-			# TODO: Can we not do this manually, perhaps?
 			self.optionsWidget.cutButton = QPushButton(STRING_CUT)
-			self.optionsWidget.cutButton.setFont(
-				QFont(*FONT_LIST))
-			self.optionsWidget.cutButton.clicked.connect(
-				self.cutPDF)
-			self.optionsWidget.cutButton.setToolTip(
-				'Cut PDF in two')
-			self.optionsWidget.layout.addWidget(
-				self.optionsWidget.cutButton)
-			self.optionsWidget.cutButton.setStyleSheet(STYLESHEET_BUTTON)
+			self.initButton(self.optionsWidget.cutButton, TOOLTIP_CUT, self.cutPDF, STYLESHEET_BUTTON)
 
 			self.optionsWidget.extractButton = QPushButton(STRING_EXTRACT)
-			self.optionsWidget.extractButton.setFont(
-				QFont(*FONT_LIST))
-			self.optionsWidget.extractButton.clicked.connect(
-				self.extractPDF)
-			self.optionsWidget.extractButton.setToolTip(
-				'Extract pages from PDF')
-			self.optionsWidget.layout.addWidget(
-				self.optionsWidget.extractButton)
-			self.optionsWidget.extractButton.setStyleSheet(STYLESHEET_BUTTON)
+			self.initButton(self.optionsWidget.extractButton, TOOLTIP_EXTRACT, self.extractPDF, STYLESHEET_BUTTON)
 
 			self.optionsWidget.splitButton = QPushButton(STRING_SPLIT)
-			self.optionsWidget.splitButton.setFont(
-				QFont(*FONT_LIST))
-			self.optionsWidget.splitButton.clicked.connect(
-				self.splitPDF)
-			self.optionsWidget.splitButton.setToolTip(
-				'Split files into single-page PDFs')
-			self.optionsWidget.layout.addWidget(
-				self.optionsWidget.splitButton)
-			self.optionsWidget.splitButton.setStyleSheet(STYLESHEET_BUTTON)
+			self.initButton(self.optionsWidget.splitButton, TOOLTIP_SPLIT, self.splitPDF, STYLESHEET_BUTTON)
 
 			self.optionsWidget.reverseButton = QPushButton(STRING_REVERSE)
-			self.optionsWidget.reverseButton.setFont(
-				QFont(*FONT_LIST))
-			self.optionsWidget.reverseButton.clicked.connect(
-				self.reversePDF)
-			self.optionsWidget.reverseButton.setToolTip(
-				'Reverse page order')
-			self.optionsWidget.layout.addWidget(
-				self.optionsWidget.reverseButton)
-			self.optionsWidget.reverseButton.setStyleSheet(STYLESHEET_BUTTON)
+			self.initButton(self.optionsWidget.reverseButton, TOOLTIP_REVERSE, self.reversePDF, STYLESHEET_BUTTON)
 
 			self.optionsWidget.backButton = QPushButton(STRING_BACK)
-			self.optionsWidget.backButton.setFont(
-				QFont(*FONT_LIST))
-			self.optionsWidget.backButton.clicked.connect(
-				self.goBack)
-			self.optionsWidget.backButton.setToolTip(
-				'Go back to welcome screen')
-			self.optionsWidget.layout.addWidget(
-				self.optionsWidget.backButton)
-			self.optionsWidget.backButton.setStyleSheet(
-				STYLESHEET_BUTTON_SECONDARY)
+			self.initButton(self.optionsWidget.reverseButton, TOOLTIP_BACK, self.goBack, STYLESHEET_BUTTON)
 
 
 class WelcomeScreen(QWidget):
