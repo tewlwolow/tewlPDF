@@ -209,7 +209,7 @@ class FilelistScreen(QWidget):
 		self.show()
 
 	# For showing out of index errors
-	def showPageError(self, filename):
+	def showErrorBox(self, filename):
 		errorBox = QMessageBox()
 		errorBox.setIcon(QMessageBox.Critical)
 		errorBox.setTextFormat(Qt.RichText)
@@ -301,7 +301,7 @@ class FilelistScreen(QWidget):
 
 			# Check for OutOfBounds type error
 			if len(src.pages) <= limit:
-				self.showPageError(fileName)
+				self.showErrorBox(fileName)
 				return
 			else:
 				self.hide()
@@ -379,7 +379,7 @@ class FilelistScreen(QWidget):
 				return
 
 			if len(src.pages) <= last:
-				self.showPageError(fileName)
+				self.showErrorBox(fileName)
 				return
 			else:
 				self.hide()
@@ -409,7 +409,7 @@ class FilelistScreen(QWidget):
 					return
 
 				if len(src.pages) <= last:
-					self.showPageError(fileName)
+					self.showErrorBox(fileName)
 					return
 				else:
 					self.hide()
