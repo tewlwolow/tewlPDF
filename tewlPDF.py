@@ -56,6 +56,7 @@ STRING_REVERSE = 'REVERSE'
 STRING_BACK = 'BACK'
 STRING_CUT = 'CUT'
 STRING_EXTRACT = 'EXTRACT'
+STRING_AGAIN = 'AGAIN'
 
 TOOLTIP_SPLIT = 'Split files into single-page PDFs'
 TOOLTIP_MERGE = 'Merge files into one PDF'
@@ -63,6 +64,7 @@ TOOLTIP_REVERSE = 'Reverse page order'
 TOOLTIP_BACK = 'Go back to welcome screen'
 TOOLTIP_CUT = 'Cut PDF in two'
 TOOLTIP_EXTRACT = 'Extract pages from PDF'
+TOOLTIP_AGAIN = 'Manipulate more files'
 
 STRING_INFO = """
 	<h2><center>tewlPDF v.{}</center></h2><br>
@@ -111,11 +113,13 @@ class FinishedScreen(QWidget):
 		self.text.setAlignment(Qt.AlignCenter)
 		self.text.setFont(QFont(*FONT_MAIN))
 		self.text.setStyleSheet(STYLESHEET_MAIN)
-		self.backButton = QPushButton('Again')
-		self.backButton.setFont(QFont(*FONT_LIST))
-		self.backButton.clicked.connect(restart)
-		self.backButton.setStyleSheet(STYLESHEET_BUTTON_AGAIN)
-		self.layout.addWidget(self.backButton, 0, 0, -
+
+		self.againButton = QPushButton(STRING_AGAIN)
+		self.againButton.setFont(QFont(*FONT_LIST))
+		self.againButton.clicked.connect(restart)
+		self.againButton.setStyleSheet(STYLESHEET_BUTTON_AGAIN)		
+
+		self.layout.addWidget(self.againButton, 0, 0, -
 							  1, -1, alignment=Qt.AlignCenter | Qt.AlignBottom)
 		self.setLayout(self.layout)
 
@@ -291,6 +295,7 @@ class FilelistScreen(QWidget):
 				errorBox.setWindowTitle("Error!")
 				errorBox.setWindowFlags(Qt.FramelessWindowHint)
 				errorBox.exec_()
+				return
 			else:
 				self.hide()
 
@@ -375,6 +380,7 @@ class FilelistScreen(QWidget):
 				errorBox.setWindowTitle("Error!")
 				errorBox.setWindowFlags(Qt.FramelessWindowHint)
 				errorBox.exec_()
+				return
 			else:
 				self.hide()
 
@@ -411,6 +417,7 @@ class FilelistScreen(QWidget):
 					errorBox.setWindowTitle("Error!")
 					errorBox.setWindowFlags(Qt.FramelessWindowHint)
 					errorBox.exec_()
+					return
 				else:
 					self.hide()
 
