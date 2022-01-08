@@ -228,6 +228,7 @@ class FilelistScreen(QWidget):
     # Useful for cancelling a specific operation
     def reShow(self):
         self.hide()
+        mainWindow.workingScreen.hide()
         self.show()
 
     def showFinished(self):
@@ -309,9 +310,9 @@ class FilelistScreen(QWidget):
     def cutPDF(self):
         self.showWorking()
         # Nothing works here for hiding the ugly bar...
-        inputWindow = QInputDialog(self)
+        self.inputWindow = QInputDialog(self)
 
-        limit, ok = inputWindow.getInt(
+        limit, ok = self.inputWindow.getInt(
             self, 'Give details', 'The last page to be included in the first file:')
 
         if not ok or limit == 0:
@@ -361,27 +362,31 @@ class FilelistScreen(QWidget):
 
         self.showFinished()
 
+    def closeDialog(self):
+        self.inputWindow.reject()
+        self.reShow()
+
     # Define extracting operation
     def extractPDF(self):
         self.showWorking()
         # Nothing works here for hiding the ugly bar...
-        inputWindow = QDialog(self)
-        inputWindow.setWindowTitle('Pages to extract:')
-        inputWindow.first = QSpinBox(inputWindow)
-        inputWindow.last = QSpinBox(inputWindow)
+        self.inputWindow = QDialog(self)
+        self.inputWindow.setWindowTitle('Pages to extract:')
+        self.inputWindow.first = QSpinBox(self.inputWindow)
+        self.inputWindow.last = QSpinBox(self.inputWindow)
         buttonBox = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, inputWindow)
-        layout = QFormLayout(inputWindow)
-        layout.addRow("First page", inputWindow.first)
-        layout.addRow("Last page", inputWindow.last)
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self.inputWindow)
+        layout = QFormLayout(self.inputWindow)
+        layout.addRow("First page", self.inputWindow.first)
+        layout.addRow("Last page", self.inputWindow.last)
         layout.addWidget(buttonBox)
-        buttonBox.accepted.connect(inputWindow.accept)
-        buttonBox.rejected.connect(inputWindow.reject)
-        inputWindow.exec_()
+        buttonBox.accepted.connect(self.inputWindow.accept)
+        buttonBox.rejected.connect(self.closeDialog)
+        self.inputWindow.exec_()
 
         # Because we're using 0-indexed Pythonic numbering later on
-        first = int(inputWindow.first.value()) - 1
-        last = int(inputWindow.last.value())
+        first = int(self.inputWindow.first.value()) - 1
+        last = int(self.inputWindow.last.value())
 
         if first < 0 or last == 0:
             self.reShow()
