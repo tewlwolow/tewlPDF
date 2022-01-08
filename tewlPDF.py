@@ -248,7 +248,8 @@ class FilelistScreen(QWidget):
     # Define merging operation
     def mergePDF(self):
         # Get files once again; user might have reordered those
-        self.__files = [str(self.listWidget.item(i).text())
+        # Using data from the 'model', not view
+        self.__files = [str(self.listWidget.item(i).data(Qt.UserRole))
                         for i in range(self.listWidget.count())]
         self.hide()
         saveDialog = QFileDialog.getSaveFileName(
@@ -535,9 +536,14 @@ class FilelistScreen(QWidget):
 
     def parseFiles(self):
         # Create list view for each valid file dropped
+        # Show only the file stem, but store the full path for proper handling of reorder events
         for f in self.__files:
-            i = QListWidgetItem(
-                (self.style().standardIcon(QStyle.SP_FileDialogDetailedView)), f, self.listWidget)
+            i = QListWidgetItem()
+            i.setIcon(self.style().standardIcon(
+                QStyle.SP_FileDialogDetailedView))
+            i.setText(Path(f).stem)
+            i.setData(Qt.UserRole, f)
+            self.listWidget.addItem(i)
 
         if len(self.__files):
             # Advance only if provided with valid files
