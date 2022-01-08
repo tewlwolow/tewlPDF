@@ -50,6 +50,7 @@ APP_AUTHOR = 'tewlwolow'
 # Messages
 STRING_DROP = 'DROP IT HERE'
 STRING_DROP_FAIL = 'Didn\'t drop any PDF files.\nTry again!'
+STRING_WORKING = 'Working...'
 STRING_FINISHED = 'It\'s done!'
 STRING_ERROR = '<h2><strong>Error!<strong></h2>'
 STRING_ERRORMESSAGE = STRING_ERRORMESSAGE = "Invalid page number for file:<br><strong>{}</strong><br>Skipping."
@@ -129,6 +130,23 @@ class FinishedScreen(QWidget):
         self.layout.addWidget(self.againButton, 0, 0, -
                               1, -1, alignment=Qt.AlignCenter | Qt.AlignBottom)
         self.setLayout(self.layout)
+
+# A usually short-lived window to show while performing operations
+
+
+class WorkingScreen(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # Define the contents of the working screen
+        self.setWindowTitle('Working')
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.text = QLabel(STRING_WORKING)
+        self.layout.addWidget(self.text)
+        self.text.setAlignment(Qt.AlignCenter)
+        self.text.setStyleSheet(STYLESHEET_MAIN)
+        self.text.setFont(QFont(*FONT_MAIN))
 
 
 # Main window defining available operations
@@ -212,6 +230,15 @@ class FilelistScreen(QWidget):
         self.hide()
         self.show()
 
+    def showFinished(self):
+        self.clearData()
+        mainWindow.workingScreen.hide()
+        mainWindow.finishedScreen.show()
+
+    def showWorking(self):
+        self.hide()
+        mainWindow.workingScreen.show()
+
     # For showing out of index errors
     def showIndexErrorBox(self, filename):
         indexErrorBox = QMessageBox()
@@ -247,11 +274,12 @@ class FilelistScreen(QWidget):
 
     # Define merging operation
     def mergePDF(self):
+        self.showWorking()
         # Get files once again; user might have reordered those
         # Using data from the 'model', not view
         self.__files = [str(self.listWidget.item(i).data(Qt.UserRole))
                         for i in range(self.listWidget.count())]
-        self.hide()
+
         saveDialog = QFileDialog.getSaveFileName(
             self,
             'Save merged PDF',
@@ -275,12 +303,11 @@ class FilelistScreen(QWidget):
         pdf.save(path)
         pdf.close()
 
-        self.clearData()
-        mainWindow.finishedScreen.show()
+        self.showFinished()
 
     # Define cutting operation
     def cutPDF(self):
-
+        self.showWorking()
         # Nothing works here for hiding the ugly bar...
         inputWindow = QInputDialog(self)
 
@@ -310,8 +337,6 @@ class FilelistScreen(QWidget):
                 self.showIndexErrorBox(fileName)
                 return
             else:
-                self.hide()
-
                 # Define paths for two cut files
                 path_1 = str(folderDialog + '/' +
                              f'{fileName.stem}_part1.pdf')
@@ -334,12 +359,11 @@ class FilelistScreen(QWidget):
 
                 src.close()
 
-        self.clearData()
-        mainWindow.finishedScreen.show()
+        self.showFinished()
 
     # Define extracting operation
     def extractPDF(self):
-
+        self.showWorking()
         # Nothing works here for hiding the ugly bar...
         inputWindow = QDialog(self)
         inputWindow.setWindowTitle('Pages to extract:')
@@ -388,8 +412,6 @@ class FilelistScreen(QWidget):
                 self.showIndexErrorBox(fileName)
                 return
             else:
-                self.hide()
-
                 dst = Pdf.new()
 
                 # Write the selected slice to a new file
@@ -433,12 +455,11 @@ class FilelistScreen(QWidget):
 
                     src.close()
 
-        self.clearData()
-        mainWindow.finishedScreen.show()
+        self.showFinished()
 
     # Define splitting operation
     def splitPDF(self):
-        self.hide()
+        self.showWorking()
         folderDialog = QFileDialog.getExistingDirectory(
             self, 'Select Folder')
 
@@ -463,12 +484,10 @@ class FilelistScreen(QWidget):
                 dst.close()
             src.close()
 
-        self.clearData()
-        mainWindow.finishedScreen.show()
+        self.showFinished()
 
     def reversePDF(self):
-        self.hide()
-
+        self.showWorking()
         # Different file/folder handling based on no files
         # TODO: Refactor? Too much repetition here I fear
         if len(self.__files) == 1:
@@ -522,8 +541,7 @@ class FilelistScreen(QWidget):
                 dst.close()
                 src.close()
 
-        self.clearData()
-        mainWindow.finishedScreen.show()
+        self.showFinished()
 
     def initButton(self, button, tooltip, func, style):
         button.setFont(QFont(*FONT_LIST))
@@ -700,6 +718,11 @@ class MainWindow(QMainWindow):
         self.filelistScreen = FilelistScreen()
         self.layout.addWidget(self.filelistScreen)
         self.filelistScreen.hide()
+
+        # Define working screen
+        self.workingScreen = WorkingScreen()
+        self.layout.addWidget(self.workingScreen)
+        self.workingScreen.hide()
 
         # Define finished screen
         self.finishedScreen = FinishedScreen(self)
