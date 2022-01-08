@@ -44,7 +44,7 @@ def resource_path(relative_path):
 
 # Define some (semi) constans
 APP_NAME = 'tewlPDF'
-APP_VERSION = '0.9.1'
+APP_VERSION = '0.9.2'
 APP_AUTHOR = 'tewlwolow'
 
 # Messages
